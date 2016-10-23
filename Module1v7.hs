@@ -33,8 +33,8 @@ decryptAffine (k1, k2) p c = (k1' * ((c - k2) `mod` p)) `mod` p
 {-
 λ> encryptAffine (34, 71) 541 204
 515
-λ> decryptAffine (34, 71) 541 515
-204
+λ> decryptAffine (34, 71) 541 431
+297
 -}
 
 ------ 1.43 (b)
@@ -193,7 +193,7 @@ decryptAlpha d k c = (c - (getAlpha d k)) `mod` (10 ^ d)
 e149_a :: Int
 e149_a = encryptAlpha 6 11 328973
 
--- 8600751
+-- 98600751
 e149_b :: Int
 e149_b = decryptAlpha 8 23 78183903
 
