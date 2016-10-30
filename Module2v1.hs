@@ -36,7 +36,7 @@ logD p g h =
 
 exp :: Int -> Int -> Int -> Int
 exp _ _ 0 = 1
-exp p g n = (g * (exp p n $ pred n)) `mod` p
+exp p g n = (g * (exp p g $ pred n)) `mod` p
 
 e24a, e24b, e24c :: Int
 e24a = logD 23 2 13
@@ -74,9 +74,9 @@ e26_g = 2
 e26_a = logD e26_p e26_g e26_A -- 587
 e26_A = 974
 e26_b = 871
-e26_B = exp e26_p e26_g e26_b           -- 1357
-e26_secretBob = exp e26_p e26_A e26_b   -- 446
-e26_secretAlice = exp e26_p e26_B e26_a -- 446
+e26_B = exp e26_p e26_g e26_b           -- 805
+e26_secretBob = exp e26_p e26_A e26_b   -- 397
+e26_secretAlice = exp e26_p e26_B e26_a -- 397
 e26_isBullshit = e26_secretBob /= e26_secretAlice -- not bullshit
 
 main = undefined
