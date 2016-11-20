@@ -1,11 +1,14 @@
 module Module2v4567 () where
 
-import           Data.Bifunctor (bimap)
-import           Data.List      (sortBy)
-import           Data.Ord       (comparing)
-import           Prelude        hiding (exp)
+import           Control.Monad       (forM_, unless)
+import           Data.Bifunctor      (bimap)
+import           Data.List           (sortBy)
+import           Data.Numbers.Primes (primes)
+import           Data.Ord            (comparing)
+import           Debug.Trace
+import           Prelude             hiding (exp)
 
-import           Lib            (exp, inverse, logD)
+import           Lib                 (exp, inverse, logDTrialAndError)
 
 ------ 2.8 Elgamal general
 
@@ -39,7 +42,7 @@ e28Eve = m
   where
     pubB = 893
     c = (693, 793)
-    b = logD e28p e28g pubB
+    b = logDTrialAndError e28p e28g pubB
     m = elgamalDec e28p e28g b c
 
 ------ 2.9 Making use of DH problem to break Elgamal
@@ -65,7 +68,6 @@ shank p g h = collisionGo list1 list2
     getN 1 m  = m
     getN g' m = getN (g' `ml` g) (m+1)
     _N = getN g 1
---    n = 1 + floor (sqrt $ fromIntegral p)
     n = 1 + floor (sqrt $ fromIntegral _N)
     list1 = sortBy (comparing fst) $ take (n+1) $
         iterate (bimap (ml g) (+1)) (1,0)
@@ -76,7 +78,7 @@ shank p g h = collisionGo list1 list2
     collisionGo _ [] = error "shankErr"
     collisionGo a@((x,i):xs) b@((y,j):ys) =
         case compare x y of
-          EQ -> (i + j * n) `mod` p
+          EQ -> (i + j * n) `mod` _N
           LT -> collisionGo xs b
           GT -> collisionGo a ys
 
@@ -88,3 +90,22 @@ shank p g h = collisionGo list1 list2
 λ> shank 3571 650 2213
 319
 -}
+
+testLogs :: IO ()
+testLogs =
+    forM_
+        [ (p, g, b)
+        | p <- take 16 primes
+        , g <- [2 .. 100]
+        , b <- [1 .. 100]
+        , g < p
+        , b < p ] $
+    \(p, g, b) -> do
+        let h = exp p g b
+        let label = show p ++ ", " ++ show g ++ ", " ++ show b ++ ", " ++ show h
+        putStrLn label
+        let b1 = shank p g h
+            b2 = logDTrialAndError p g h
+        unless (exp p g b1 == h) $ error $ "shank failed: " ++ label
+        unless (exp p g b2 == h) $ error $ "trial/error failed: " ++ label
+        unless (b1 == b2) $ error $ "logs are not equal: " ++ label

@@ -1,6 +1,6 @@
 -- | Some useful common functions extracted from tasks. I first solve
 -- them in per-section-modules, then transfer here and use in next
--- sections.
+-- sections. Not for real cryptographic use ofc.
 
 module Lib
        ( exp
@@ -38,33 +38,34 @@ inverse a p = a `power` (p-2)
     power a b = ((power a (b-1)) `mod` p) * a `mod` p
 
 logD :: (Integral n) => n -> n -> n -> n
-logD = logDTrialAndError
+logD = logDShank
 
 -- | Trial-and-error discrete logarithm solving algorithm
 logDTrialAndError :: (Integral n) => n -> n -> n -> n
 logDTrialAndError p g h =
     fst . head $ filter ((== h) . snd) $
-    map (\x -> (x, exp p g x)) [1..p-1]
+    map (\x -> (x, exp p g x)) [0..p-1]
 
 -- | Solving log problem with shank algorithm
 logDShank :: (Integral n) => n -> n -> n -> n
 logDShank p g h = collisionGo list1 list2
   where
     ml a b = (a * b) `mod` p
-    -- TODO getN is O(p), should be O(sqrt(p))
     getN 1 m  = m
-    getN g' m = getN (g' `ml` g) (m+1)
+    getN g' m = getN (g' `ml` g) (m + 1)
     _N = getN g 1
     n = 1 + floor (sqrt $ fromIntegral _N)
-    list1 = sortBy (comparing fst) $ take (fromIntegral $ n+1) $
-        iterate (bimap (ml g) (+1)) (1,0)
+    list1 =
+        sortBy (comparing fst) $
+        take (fromIntegral $ n + 1) $ iterate (bimap (ml g) (+ 1)) (1, 0)
     gMinN = exp p g (_N - n) -- g^(-n)
-    list2 = sortBy (comparing fst) $ take (fromIntegral $ n+1) $
-        iterate (bimap (ml gMinN) (+1)) (h,0)
+    list2 =
+        sortBy (comparing fst) $
+        take (fromIntegral $ n + 1) $ iterate (bimap (ml gMinN) (+ 1)) (h, 0)
     collisionGo [] _ = error "shankErr"
     collisionGo _ [] = error "shankErr"
-    collisionGo a@((x,i):xs) b@((y,j):ys) =
+    collisionGo a@((x, i):xs) b@((y, j):ys) =
         case compare x y of
-          EQ -> (i + j * n) `mod` p
-          LT -> collisionGo xs b
-          GT -> collisionGo a ys
+            EQ -> (i + j * n) `mod` _N
+            LT -> collisionGo xs b
+            GT -> collisionGo a ys
