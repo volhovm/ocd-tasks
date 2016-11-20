@@ -1,5 +1,6 @@
 {-# LANGUAGE NoImplicitPrelude #-}
-module Main (main) where
+
+module Module1v3 () where
 
 import           Prelude hiding ((++))
 
@@ -12,5 +13,4 @@ units m = filter (\n -> gcd n m == 1) [1..m-1]
 (*:) a b = (a * b) `mod` m
 (+:) a b = (a + b) `mod` m
 
-main :: IO ()
-main = undefined
+--- ?

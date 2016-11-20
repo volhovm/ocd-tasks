@@ -1,11 +1,10 @@
 {-# LANGUAGE NoImplicitPrelude #-}
-module Main where
+module Module1v2 () where
 
 import           Control.Monad  (forM_, unless)
 import           Data.Bifunctor (bimap, second)
 import           Data.Bool      (bool)
 import           Data.Tuple     (swap)
-import           Debug.Trace
 import           Prelude        hiding (gcd)
 
 gcd :: Int -> Int -> Int
@@ -36,7 +35,7 @@ testGcd :: IO ()
 testGcd =
     forM_ [(a,b) | a <- [1..100], b <- [1..100]] $
       \(a,b) -> do
-        putStrLn (show a ++ "~" ++ show b)
+        --putStrLn (show a ++ "~" ++ show b)
         unless (gcd a b == (let (ka,kb) = gcd' a b in ka * a + kb * b)) $
             error (show a ++ "~" ++ show b)
 
@@ -50,3 +49,4 @@ thus there's no lowest positive number then 1, 1 is gcd
 
 b) gcd (16,10) = 2, but 16*1-10*1 = 6.
 c)
+-}

@@ -1,4 +1,4 @@
-module Main where
+module Module1v1 () where
 
 import           Data.Char (digitToInt, isAlpha, toLower, toUpper)
 
@@ -103,5 +103,3 @@ in the way permutations with possibly fixed letters are there, but
 best/worst cases are n/n and m/n still, everything else is between.
 
 -}
-
-main = undefined

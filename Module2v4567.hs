@@ -1,26 +1,11 @@
-module Module2v2 (main) where
+module Module2v4567 () where
 
 import           Data.Bifunctor (bimap)
 import           Data.List      (sortBy)
 import           Data.Ord       (comparing)
-import           Debug.Trace
 import           Prelude        hiding (exp)
 
-exp :: Int -> Int -> Int -> Int
-exp _ _ 0 = 1
-exp p g n = (g * (exp p g $ pred n)) `mod` p
-
-inverse :: Int -> Int -> Int
-inverse a p = a `power` (p-2)
-  where
-    power a 0 = 0
-    power a 1 = a `mod` p
-    power a b = ((power a (b-1)) `mod` p) * a `mod` p
-
-logD :: Int -> Int -> Int -> Int
-logD p g h =
-    fst . head $ filter ((== h) . snd) $
-    map (\x -> (x, exp p g x)) [1..p-1]
+import           Lib            (exp, inverse, logD)
 
 ------ 2.8 Elgamal general
 
@@ -103,5 +88,3 @@ shank p g h = collisionGo list1 list2
 λ> shank 3571 650 2213
 319
 -}
-
-main = undefined

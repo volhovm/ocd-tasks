@@ -1,5 +1,6 @@
-module Main (main) where
+module Module2v23 () where
 
+import           Lib     (exp, logD)
 import           Prelude hiding (exp)
 
 ------ 2.3
@@ -28,15 +29,6 @@ follows.
 -}
 
 ------ 2.4
-
-logD :: Int -> Int -> Int -> Int
-logD p g h =
-    fst . head $ filter ((== h) . snd) $
-    map (\x -> (x, exp p g x)) [1..p-1]
-
-exp :: Int -> Int -> Int -> Int
-exp _ _ 0 = 1
-exp p g n = (g * (exp p g $ pred n)) `mod` p
 
 e24a, e24b, e24c :: Int
 e24a = logD 23 2 13
@@ -78,5 +70,3 @@ e26_B = exp e26_p e26_g e26_b           -- 805
 e26_secretBob = exp e26_p e26_A e26_b   -- 397
 e26_secretAlice = exp e26_p e26_B e26_a -- 397
 e26_isBullshit = e26_secretBob /= e26_secretAlice -- not bullshit
-
-main = undefined

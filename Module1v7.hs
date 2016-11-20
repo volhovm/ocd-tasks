@@ -1,7 +1,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Main (main) where
+module Module1v7 () where
 
 import qualified Data.ByteString     as BS
 import           Data.Numbers.Primes (isPrime, primeFactors, primes)
@@ -206,8 +206,3 @@ e149_b = decryptAlpha 8 23 78183903
 e150_gcd = gcd 12849217045006222 6485880443666222
 
 factors = primeFactors e150_gcd -- result [2,87192883], so k = 87192883
-
-
-----------------
-main :: IO ()
-main = undefined
