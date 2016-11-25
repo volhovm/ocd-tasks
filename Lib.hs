@@ -6,6 +6,7 @@ module Lib
        ( exp
        , relativePrimes
        , inverse
+       , inverseP
        , logD
        , logDTrialAndError
        , logDShank
@@ -30,12 +31,16 @@ relativePrimes l =
 -- theorem. Here's something about comparing fermat's little theorem
 -- approach and euclid's algorithm (implemented in this repo too):
 -- http://www.ams.org/journals/mcom/1969-23-105/S0025-5718-1969-0242345-5/S0025-5718-1969-0242345-5.pdf
-inverse :: (Integral n) => n -> n -> n
-inverse a p = a `power` (p-2)
+inverseP :: (Integral n) => n -> n -> n
+inverseP a p = a `power` (p-2)
   where
     power a 0 = 0
     power a 1 = a `mod` p
     power a b = ((power a (b-1)) `mod` p) * a `mod` p
+
+-- | Inverse for non-primes
+inverse :: (Integral n) => n -> n -> n
+inverse a n = head $ filter (\x -> x * a `mod` n == 1) [0..n-1]
 
 logD :: (Integral n) => n -> n -> n -> n
 logD = logDShank

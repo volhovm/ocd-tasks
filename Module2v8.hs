@@ -2,7 +2,7 @@ module Module2v8 () where
 
 import           Control.Monad       (guard)
 import           Data.Bifunctor      (bimap)
-import           Data.List           (sortBy)
+import           Data.List           (nub, sortBy)
 import           Data.Maybe          (catMaybes, isJust)
 import           Data.Numbers.Primes (primeFactors)
 import           Data.Ord            (comparing)
@@ -16,34 +16,44 @@ import           Lib                 (exp, inverse, relativePrimes)
 -- Accepts pairs of (aᵢ,mᵢ) where x = aᵢ (mod mᵢ).
 chinese :: [(Integer,Integer)] -> Integer
 chinese [] = error "chinese called with empty list"
-chinese xs | not (relativePrimes $ map snd xs) = error "not relative primes"
+chinese xs | not (relativePrimes $ map snd xs) =
+             error $ "not relative primes: " ++ show (map snd xs)
 chinese ((a₁,m₁):xs) = chineseGo xs (a₁ `mod` m₁) m₁
   where
     chineseGo [] c _              = c
-    chineseGo ((a, m):xs) c mprod =
-        let m' = inverse mprod m
-            y = (m' * ((a - c) `mod` m)) `mod` m
-            c' = c + mprod * y
-        in chineseGo xs c' (mprod * m)
+    chineseGo x@((a, m):xs) c mprod =
+        --trace ("x: " ++ show x) $
+        --trace ("c: " ++ show c) $
+        --trace ("mprod: " ++ show mprod) $
+        --trace ("m': " ++ show m') $
+        --trace ("y: " ++ show y) $
+        --trace ("c': " ++ show c') $
+        chineseGo xs c' (mprod * m)
+        where
+          m' = inverse mprod m
+          y = (m' * ((a - c) `mod` m)) `mod` m
+          c' = c + mprod * y
+
 
 ------ 2.18
+
 
 e218 = do
     print $ chinese [(3,7), (4,9)]
     print $ chinese [(137,423), (87,191)]
-    print $ chinese [(133,451), (87,237)]
     print $ chinese [(5,9), (6,10), (7,11)]
     print $ chinese [(37,43), (22,49), (18,71)]
+    -- (3)
+    print $ chinese [(133,451), (237,697)]
 
 {-
 λ> e218
-52
+31
 27209
-49743
-194
-139959
+986
+11733
+*** Exception: not relative primes: [451,697]
 -}
-
 
 ------ 2.19
 
@@ -75,11 +85,11 @@ sqrtP p a0 = do
 
 sqrtPN :: Integer -> Integer -> Maybe [Integer]
 sqrtPN n a = do
-    traceShowM ps
-    traceShowM squares
-    traceShowM permutations
-    traceShowM chineseInput
-    traceShowM chineseSolved
+    --traceShowM ps
+    --traceShowM squares
+    --traceShowM permutations
+    --traceShowM chineseInput
+    --traceShowM chineseSolved
     guard $ all isJust squares
     pure chineseSolved
   where
@@ -90,7 +100,7 @@ sqrtPN n a = do
     perms' ys []     = ys
     perms' ys (x:xs) = perms' (map (x :) ys ++ map ((-x) :) ys) xs
     chineseInput = map (\xs -> map (\(a, m) -> (a `mod` m, m)) $ xs `zip` ps) permutations
-    chineseSolved = map chinese chineseInput
+    chineseSolved = map chinese $ map nub chineseInput
 
 {-
 λ> sqrtPN 437 340
@@ -100,9 +110,9 @@ Just [1387,2654,489,1756]
 λ> sqrtPN 4189 2833
 Just [1712,3187,1002,2477]
 λ> sqrtPN 868 813
-Just [785,393,41,517,785,393,41,517,785,393,41,517,785,393,41,517]
+Just [351,393,41,83,351,393,41,83,351,393,41,83,351,393,41,83]
 λ> nub <$> sqrtPN 868 813
-Just [785,393,41,517]
+Just [351,393,41,83]
 -- well, only four -- this can be explained
 λ> primeFactors 868
 [2,2,7,31]
