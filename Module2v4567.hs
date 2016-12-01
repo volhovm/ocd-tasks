@@ -62,25 +62,28 @@ g^ka which is c₁^a then inverted to decrypt m.
 ------ 2.17
 
 shank :: Int -> Int -> Int -> Int
+shank p g 1 = logDTrialAndError p g 1
 shank p g h = collisionGo list1 list2
   where
     ml a b = (a * b) `mod` p
     getN 1 m  = m
-    getN g' m = getN (g' `ml` g) (m+1)
+    getN g' m = getN (g' `ml` g) (m + 1)
     _N = getN g 1
     n = 1 + floor (sqrt $ fromIntegral _N)
-    list1 = sortBy (comparing fst) $ take (n+1) $
-        iterate (bimap (ml g) (+1)) (1,0)
+    list1 =
+        sortBy (comparing fst) $
+        take (n + 1) $ iterate (bimap (ml g) (+ 1)) (1, 0)
     gMinN = exp p g (_N - n) -- g^(-n)
-    list2 = sortBy (comparing fst) $ take (n+1) $
-        iterate (bimap (ml gMinN) (+1)) (h,0)
+    list2 =
+        sortBy (comparing fst) $
+        take (n + 1) $ iterate (bimap (ml gMinN) (+ 1)) (h, 0)
     collisionGo [] _ = error "shankErr"
     collisionGo _ [] = error "shankErr"
-    collisionGo a@((x,i):xs) b@((y,j):ys) =
+    collisionGo a@((x, i):xs) b@((y, j):ys) =
         case compare x y of
-          EQ -> (i + j * n) `mod` _N
-          LT -> collisionGo xs b
-          GT -> collisionGo a ys
+            EQ -> (i + j * n) `mod` _N
+            LT -> collisionGo xs b
+            GT -> collisionGo a ys
 
 {-
 λ> shank 71 11 21
