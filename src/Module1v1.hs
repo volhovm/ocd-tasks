@@ -1,6 +1,7 @@
 module Module1v1 () where
 
 import           Data.Char (digitToInt, isAlpha, toLower, toUpper)
+import           Prelude
 
 upperL, lowerL :: Int
 upperL = 65
