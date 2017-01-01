@@ -1,5 +1,14 @@
+{-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE ScopedTypeVariables        #-}
+{-# LANGUAGE UndecidableInstances       #-}
+
 module Module2v10 where
 
+import           Data.Proxy (Proxy (..))
+import           Prelude
 
 ----------------------------------------------------------------------------
 -- 2.29
@@ -131,3 +140,37 @@ F -- field. a,b -- nonzero polynomials in F[x].
 ----------------------------------------------------------------------------
 -- 2.35
 ----------------------------------------------------------------------------
+
+class WithTag t a where
+    getTag :: Proxy a -> t
+
+class Ring a where
+    f0 :: a
+    (<+>) :: a -> a -> a
+    fneg :: a -> a
+    f1 :: a
+    (<*>) :: a -> a -> a
+
+-- Z/nZ
+newtype Z a = Z Integer deriving (Num, Show)
+
+data Z6 = Z6
+
+instance WithTag Int Z6 where
+    getTag _ = 6
+
+instance WithTag t a => WithTag t (Z a) where
+    getTag _ = getTag (Proxy :: Proxy (Z a))
+
+instance WithTag Integer a => Ring (Z a) where
+    f0 = Z 0
+    (Z a) <+> (Z b) = Z $ a + b `mod` getTag (Proxy :: Proxy (Z a))
+    f1 = Z 1
+    fneg (Z 0) = Z 0
+    fneg (Z i) = Z $ (6 - i) `mod` getTag (Proxy :: Proxy (Z a))
+    (Z a) <*> (Z b) = Z $ a * b `mod` getTag (Proxy :: Proxy (Z a))
+
+newtype Poly a = Poly { fromPoly :: [a] }
+
+--(<+>) :: Field a => Poly a -> Poly a -> Poly a
+--(<+>)
