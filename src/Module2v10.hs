@@ -10,10 +10,15 @@
 
 module Module2v10 where
 
-import           Control.Lens  (ix, (%~), (&), _1)
-import           Data.Foldable (foldl')
-import           Data.Proxy    (Proxy (..))
-import           Prelude       hiding ((<*>))
+import           Control.Lens   (ix, (%~), (&), _1)
+import           Data.Bifunctor (bimap)
+import           Data.Bool      (bool)
+import           Data.Foldable  (foldl')
+import           Data.Proxy     (Proxy (..))
+import           Debug.Trace
+import           Prelude        hiding ((<*>))
+
+import           Lib            (inverseP)
 
 ----------------------------------------------------------------------------
 -- 2.29
@@ -146,8 +151,8 @@ F -- field. a,b -- nonzero polynomials in F[x].
 -- 2.35
 ----------------------------------------------------------------------------
 
-class WithTag t a where
-    getTag :: Proxy a -> t
+class WithTag a where
+    getTag :: Num n => Proxy a -> n
 
 class Ring a where
     f0 :: a
@@ -156,6 +161,9 @@ class Ring a where
     f1 :: a
     (<*>) :: a -> a -> a
 
+(<->) :: Ring a => a -> a -> a
+(<->) a b = a <+> (fneg b)
+
 instance Ring Integer where
     f0 = 0
     f1 = 1
@@ -163,33 +171,46 @@ instance Ring Integer where
     fneg = negate
     (<*>) = (*)
 
+class Ring a => Field a where
+    finv :: a -> a
+    -- ^ Multiplicative inverse
+
 -- Z/nZ
-newtype Z a = Z Integer deriving (Num, Eq)
+newtype Z a = Z Integer deriving (Num, Eq, Ord, Enum, Real, Integral)
 
 instance Show (Z a) where
     show (Z i) = show i
 
 data Z6 = Z6
+data Z11 = Z11
+data Z13 = Z13
+class PrimeTag a where
 
-instance WithTag Integer Z6 where
-    getTag _ = 6
+instance WithTag Z6 where getTag _ = fromIntegral 6
+instance WithTag Z11 where getTag _ = fromIntegral 11
+instance PrimeTag Z11 where
+instance WithTag Z13 where getTag _ = fromIntegral 13
+instance PrimeTag Z13 where
 
-instance WithTag t a => WithTag t (Z a) where
+instance WithTag a => WithTag (Z a) where
     getTag _ = getTag (Proxy :: Proxy a)
 
-instance WithTag Integer a => Ring (Z a) where
+instance WithTag a => Ring (Z a) where
     f0 = Z 0
     (Z a) <+> (Z b) = Z $ (a + b) `mod` getTag (Proxy :: Proxy (Z a))
     f1 = Z 1
     fneg (Z 0) = Z 0
-    fneg (Z i) = Z $ (6 - i) `mod` getTag (Proxy :: Proxy (Z a))
+    fneg (Z i) = Z $ (getTag (Proxy :: Proxy (Z a)) - i) `mod` getTag (Proxy :: Proxy (Z a))
     (Z a) <*> (Z b) = Z $ a * b `mod` getTag (Proxy :: Proxy (Z a))
+
+instance (PrimeTag a, WithTag a) => Field (Z a) where
+    finv a = inverseP a (getTag (Proxy :: Proxy (Z a)))
 
 -- Empty polynomial is equivalent for [0]. Head -- higher degree.
 newtype Poly a = Poly { fromPoly :: [a] } deriving (Functor)
 
 instance Show a => Show (Poly a) where
-    show (Poly l) = "Poly: " ++ show l
+    show (Poly l) = "Poly " ++ show l
 
 -- Removes zeroes from the beginning
 stripZ :: (Eq a, Ring a) => Poly a -> Poly a
@@ -198,6 +219,9 @@ stripZ r@(Poly [a]) = r
 stripZ (Poly xs) =
     let l' = take (length xs - 1) xs
     in Poly $ dropWhile (== f0) l' ++ [last xs]
+
+instance (Eq a, Ring a) => Eq (Poly a) where
+    (==) (stripZ -> (Poly p1)) (stripZ -> (Poly p2)) = p1 == p2
 
 deg ::  (Eq a, Ring a, Integral n) => Poly a -> n
 deg (stripZ -> (Poly p)) = fromIntegral $ length p - 1
@@ -226,14 +250,50 @@ instance (Eq a, Ring a) => Ring (Poly a) where
             withIndex a = reverse $ reverse a `zip` [0..]
         in stripZ . Poly $ reverse $ foldl' foldFoo acc0 $ map (,p2) $ withIndex p1
 
-class Euclidian a where
+class Ring a => Euclidian a where
     (</>) :: a -> a -> (a,a)
-    -- ^ Division with (factor,remainder)
+    -- ^ Division with (quotient,remainder)
 
-euclPoly (Poly p1) (Poly p2) = undefined
+instance Euclidian Integer where
+    (</>) a b = (a `div` b, a `mod` b)
 
-instance Ring (Poly a) => Euclidian (Poly a) where
-    (</>) = undefined
+-- Ugh, terrible
+instance WithTag a => Euclidian (Z a) where
+    (</>) (Z a) (Z b) =
+        bimap
+            (Z . (`mod` getTag (Proxy :: Proxy (Z a))))
+            (Z . (`mod` getTag (Proxy :: Proxy (Z a))))
+            (a `div` b, a `mod` b)
 
-polyGcd :: Poly a -> Poly a -> Poly a
-polyGcd = undefined
+-- | a / b = (quotient,remainder)
+euclPoly :: (Show a, Eq a, Field a) => Poly a -> Poly a -> (Poly a, Poly a)
+euclPoly (stripZ -> a@(Poly p1)) (stripZ -> b@(Poly p2)) =
+    let res@(q,r) = euclPolyGo f0 a
+    in if (b <*> q) <+> r /= a
+       then error "EuclPoly assert failed"
+       else res
+  where
+    euclPolyGo (stripZ -> k) (stripZ -> r) | deg r < deg b = (k,r)
+    euclPolyGo (stripZ -> k) (stripZ -> r@(Poly pr)) =
+        let e = deg r
+            d = deg b
+            re = pr !! 0
+            bd = p2 !! 0
+            x = Poly $ (re <*> (finv bd)) : replicate (e - d) f0
+            k' = k <+> x
+            r' = r <-> (x <*> b)
+        in euclPolyGo k' r'
+
+instance (Field a, Show a, Eq a) => Euclidian (Poly a) where
+    (</>) = euclPoly
+
+gcdEucl :: (Eq a, Show a, Euclidian a) => a -> a -> a
+gcdEucl a b = gcdEuclGo a b
+  where
+    gcdEuclGo r0 r1 = let (k,r) = r0 </> r1
+                      in if r == f0 then r1 else gcdEuclGo r1 r
+
+{-
+λ> gcdEucl (Poly [1,0,2,10::Z Z13]) (Poly [3,4,6])
+Poly [9,4]
+-}
