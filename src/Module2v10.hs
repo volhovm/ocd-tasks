@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP                        #-}
+{-# LANGUAGE TypeApplications           #-}
 {-# LANGUAGE DataKinds                  #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}
@@ -14,11 +16,12 @@ import           Control.Lens   (ix, (%~), (&), _1)
 import           Data.Bifunctor (bimap)
 import           Data.Bool      (bool)
 import           Data.Foldable  (foldl')
+import Data.List (intercalate)
 import           Data.Proxy     (Proxy (..))
 import           Debug.Trace
 import           Prelude        hiding ((<*>))
 
-import           Lib            (inverseP)
+import           Lib            (inverse)
 
 ----------------------------------------------------------------------------
 -- 2.29
@@ -181,16 +184,20 @@ newtype Z a = Z Integer deriving (Num, Eq, Ord, Enum, Real, Integral)
 instance Show (Z a) where
     show (Z i) = show i
 
-data Z6 = Z6
-data Z11 = Z11
-data Z13 = Z13
-class PrimeTag a where
+#define GenZ(N) \
+  data Z/**/N = Z/**/N; \
+  instance WithTag Z/**/N where { getTag _ = fromIntegral N };\
 
-instance WithTag Z6 where getTag _ = fromIntegral 6
-instance WithTag Z11 where getTag _ = fromIntegral 11
-instance PrimeTag Z11 where
-instance WithTag Z13 where getTag _ = fromIntegral 13
-instance PrimeTag Z13 where
+GenZ(2)
+GenZ(3)
+GenZ(4)
+GenZ(5)
+GenZ(6)
+GenZ(7)
+GenZ(8)
+GenZ(9)
+GenZ(11)
+GenZ(13)
 
 instance WithTag a => WithTag (Z a) where
     getTag _ = getTag (Proxy :: Proxy a)
@@ -203,8 +210,8 @@ instance WithTag a => Ring (Z a) where
     fneg (Z i) = Z $ (getTag (Proxy :: Proxy (Z a)) - i) `mod` getTag (Proxy :: Proxy (Z a))
     (Z a) <*> (Z b) = Z $ a * b `mod` getTag (Proxy :: Proxy (Z a))
 
-instance (PrimeTag a, WithTag a) => Field (Z a) where
-    finv a = inverseP a (getTag (Proxy :: Proxy (Z a)))
+instance (WithTag a) => Field (Z a) where
+    finv a = inverse a (getTag (Proxy :: Proxy (Z a)))
 
 -- Empty polynomial is equivalent for [0]. Head -- higher degree.
 newtype Poly a = Poly { fromPoly :: [a] } deriving (Functor)
@@ -219,6 +226,17 @@ stripZ r@(Poly [a]) = r
 stripZ (Poly xs) =
     let l' = take (length xs - 1) xs
     in Poly $ dropWhile (== f0) l' ++ [last xs]
+
+prettyPoly :: (Show a, Eq a, Ring a) => Poly a -> String
+prettyPoly (stripZ -> (Poly p)) =
+    intercalate " + " $
+    map mapFoo $
+    filter ((/= f0) . fst) $
+    reverse $ reverse p `zip` [0..]
+  where
+    mapFoo (n,0) = show n
+    mapFoo (f,i) | f == f0 = "x^" ++ show i
+    mapFoo (n,i) = show n ++ "x^" ++ show i
 
 instance (Eq a, Ring a) => Eq (Poly a) where
     (==) (stripZ -> (Poly p1)) (stripZ -> (Poly p2)) = p1 == p2
@@ -265,15 +283,18 @@ instance WithTag a => Euclidian (Z a) where
             (Z . (`mod` getTag (Proxy :: Proxy (Z a))))
             (a `div` b, a `mod` b)
 
+assert bool str action
+    | not bool = error str
+    | otherwise = action
+
 -- | a / b = (quotient,remainder)
-euclPoly :: (Show a, Eq a, Field a) => Poly a -> Poly a -> (Poly a, Poly a)
+euclPoly :: (Eq a, Field a) => Poly a -> Poly a -> (Poly a, Poly a)
 euclPoly (stripZ -> a@(Poly p1)) (stripZ -> b@(Poly p2)) =
     let res@(q,r) = euclPolyGo f0 a
-    in if (b <*> q) <+> r /= a
-       then error "EuclPoly assert failed"
-       else res
+    in assert ((b <*> q) <+> r == a) "EuclPoly assert failed" res
   where
-    euclPolyGo (stripZ -> k) (stripZ -> r) | deg r < deg b = (k,r)
+    euclPolyGo (stripZ -> k) (stripZ -> r)
+        | deg r < deg b || r == f0 = (k,r)
     euclPolyGo (stripZ -> k) (stripZ -> r@(Poly pr)) =
         let e = deg r
             d = deg b
@@ -284,16 +305,42 @@ euclPoly (stripZ -> a@(Poly p1)) (stripZ -> b@(Poly p2)) =
             r' = r <-> (x <*> b)
         in euclPolyGo k' r'
 
-instance (Field a, Show a, Eq a) => Euclidian (Poly a) where
+instance (Field a, Eq a) => Euclidian (Poly a) where
     (</>) = euclPoly
 
-gcdEucl :: (Eq a, Show a, Euclidian a) => a -> a -> a
-gcdEucl a b = gcdEuclGo a b
+gcdEucl :: (Eq a, Euclidian a) => a -> a -> a
+gcdEucl a b =
+    let res = gcdEuclGo a b
+    in assert (snd (a </> res) == f0) "gcd doesn't divide a" $
+       assert (snd (b </> res) == f0) "gcd doesn't divide a" $
+       res
   where
-    gcdEuclGo r0 r1 = let (k,r) = r0 </> r1
-                      in if r == f0 then r1 else gcdEuclGo r1 r
+    gcdEuclGo r0 r1 =
+        let (k,r) = r0 </> r1
+        in if r == f0 then r1 else gcdEuclGo r1 r
 
 {-
 λ> gcdEucl (Poly [1,0,2,10::Z Z13]) (Poly [3,4,6])
 Poly [9,4]
+-}
+
+e235a, e235b :: (WithTag a) => Poly (Z a)
+e235a = f0 <+> Poly [1, 3, fneg 5, fneg 3, 2, 2]
+e235b = f0 <+> Poly [1, 1, fneg 2, 4, 1, 5]
+
+e235gcd :: forall a. (WithTag a) => Poly (Z a)
+e235gcd = gcdEucl e235a e235b
+
+e235 = do
+    putStrLn . prettyPoly $ e235gcd @Z2
+    putStrLn . prettyPoly $ e235gcd @Z3
+    putStrLn . prettyPoly $ e235gcd @Z5
+    putStrLn . prettyPoly $ e235gcd @Z7
+
+{-
+λ> e235
+1x^3 + 1x^2 + 1x^1 + 1
+1x^2 + 2x^1 + 2
+4x^1 + 1
+4
 -}
