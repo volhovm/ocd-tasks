@@ -1,14 +1,19 @@
+{-# LANGUAGE DataKinds                  #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
+{-# LANGUAGE TupleSections              #-}
 {-# LANGUAGE UndecidableInstances       #-}
+{-# LANGUAGE ViewPatterns               #-}
 
 module Module2v10 where
 
-import           Data.Proxy (Proxy (..))
-import           Prelude
+import           Control.Lens  (ix, (%~), (&), _1)
+import           Data.Foldable (foldl')
+import           Data.Proxy    (Proxy (..))
+import           Prelude       hiding ((<*>))
 
 ----------------------------------------------------------------------------
 -- 2.29
@@ -151,26 +156,84 @@ class Ring a where
     f1 :: a
     (<*>) :: a -> a -> a
 
+instance Ring Integer where
+    f0 = 0
+    f1 = 1
+    (<+>) = (+)
+    fneg = negate
+    (<*>) = (*)
+
 -- Z/nZ
-newtype Z a = Z Integer deriving (Num, Show)
+newtype Z a = Z Integer deriving (Num, Eq)
+
+instance Show (Z a) where
+    show (Z i) = show i
 
 data Z6 = Z6
 
-instance WithTag Int Z6 where
+instance WithTag Integer Z6 where
     getTag _ = 6
 
 instance WithTag t a => WithTag t (Z a) where
-    getTag _ = getTag (Proxy :: Proxy (Z a))
+    getTag _ = getTag (Proxy :: Proxy a)
 
 instance WithTag Integer a => Ring (Z a) where
     f0 = Z 0
-    (Z a) <+> (Z b) = Z $ a + b `mod` getTag (Proxy :: Proxy (Z a))
+    (Z a) <+> (Z b) = Z $ (a + b) `mod` getTag (Proxy :: Proxy (Z a))
     f1 = Z 1
     fneg (Z 0) = Z 0
     fneg (Z i) = Z $ (6 - i) `mod` getTag (Proxy :: Proxy (Z a))
     (Z a) <*> (Z b) = Z $ a * b `mod` getTag (Proxy :: Proxy (Z a))
 
-newtype Poly a = Poly { fromPoly :: [a] }
+-- Empty polynomial is equivalent for [0]. Head -- higher degree.
+newtype Poly a = Poly { fromPoly :: [a] } deriving (Functor)
 
---(<+>) :: Field a => Poly a -> Poly a -> Poly a
---(<+>)
+instance Show a => Show (Poly a) where
+    show (Poly l) = "Poly: " ++ show l
+
+-- Removes zeroes from the beginning
+stripZ :: (Eq a, Ring a) => Poly a -> Poly a
+stripZ (Poly []) = Poly [f0]
+stripZ r@(Poly [a]) = r
+stripZ (Poly xs) =
+    let l' = take (length xs - 1) xs
+    in Poly $ dropWhile (== f0) l' ++ [last xs]
+
+deg ::  (Eq a, Ring a, Integral n) => Poly a -> n
+deg (stripZ -> (Poly p)) = fromIntegral $ length p - 1
+
+-- Zips two lists adding zeroes to end of the shortest one
+zip0 :: (Ring a) => [a] -> [a] -> [(a,a)]
+zip0 p1 p2 = uncurry zip sameSize
+  where
+    shortest | length p1 < length p2 = (p1,p2)
+             | otherwise = (p2,p1)
+    diff = length (snd shortest) - length (fst shortest)
+    sameSize = shortest & _1 %~ ((replicate diff f0) ++)
+
+instance (Eq a, Ring a) => Ring (Poly a) where
+    f0 = Poly [f0]
+    f1 = Poly [f1]
+    fneg = fmap fneg
+    (Poly p1) <+> (Poly p2) =
+        stripZ $ Poly $ map (uncurry (<+>)) $ zip0 p1 p2
+    lhs@(Poly p1) <*> rhs@(Poly p2) =
+        let acc0 = replicate ((deg lhs + deg rhs)+1) f0
+            foldFooSub acc ((e1,d1), (e2,d2)) =
+                acc & ix (d1 + d2) %~ (<+> (e1 <*> e2))
+            foldFoo acc ((e1,d1),el2) =
+                foldl' foldFooSub acc $ map ((e1,d1),) $ withIndex el2
+            withIndex a = reverse $ reverse a `zip` [0..]
+        in stripZ . Poly $ reverse $ foldl' foldFoo acc0 $ map (,p2) $ withIndex p1
+
+class Euclidian a where
+    (</>) :: a -> a -> (a,a)
+    -- ^ Division with (factor,remainder)
+
+euclPoly (Poly p1) (Poly p2) = undefined
+
+instance Ring (Poly a) => Euclidian (Poly a) where
+    (</>) = undefined
+
+polyGcd :: Poly a -> Poly a -> Poly a
+polyGcd = undefined
