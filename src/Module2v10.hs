@@ -14,6 +14,7 @@ module Module2v10 where
 
 import           Control.Lens   (ix, (%~), (&), _1)
 import           Data.Bifunctor (bimap)
+import Control.Monad (replicateM)
 import           Data.Bool      (bool)
 import           Data.Foldable  (foldl')
 import Data.List (intercalate)
@@ -167,6 +168,12 @@ class Ring a where
 (<->) :: Ring a => a -> a -> a
 (<->) a b = a <+> (fneg b)
 
+times :: (Integral n, Ring a) => n -> a -> a
+times (fromIntegral -> n) a = foldl' (<+>) f0 $ replicate n a
+
+(<^>) :: (Integral n, Ring a) => a -> n -> a
+(<^>) a (fromIntegral -> n) = foldl' (<*>) f1 $ replicate n a
+
 instance Ring Integer where
     f0 = 0
     f1 = 1
@@ -235,7 +242,9 @@ prettyPoly (stripZ -> (Poly p)) =
     reverse $ reverse p `zip` [0..]
   where
     mapFoo (n,0) = show n
-    mapFoo (f,i) | f == f0 = "x^" ++ show i
+    mapFoo (f,1) | f == f1 = "x"
+    mapFoo (f,i) | f == f1 = "x^" ++ show i
+    mapFoo (n,1) = show n ++ "x"
     mapFoo (n,i) = show n ++ "x^" ++ show i
 
 instance (Eq a, Ring a) => Eq (Poly a) where
@@ -339,8 +348,145 @@ e235 = do
 
 {-
 λ> e235
-1x^3 + 1x^2 + 1x^1 + 1
-1x^2 + 2x^1 + 2
-4x^1 + 1
+x^3 + x^2 + x + 1
+x^2 + 2x + 2
+4x + 1
 4
+-}
+
+----------------------------------------------------------------------------
+-- 2.36
+----------------------------------------------------------------------------
+
+-- Returns for a, b their u, v so that au + vb = gcd
+-- Performance is terrible, but i don't want to re-implement
+-- extended euclidian algorithm. It actually freezes for Z > 4 lol.
+gcdUV :: forall a . (WithTag a) => Poly (Z a) -> Poly (Z a) -> (Poly (Z a), Poly (Z a))
+gcdUV a b = head $ filter (\(u,v) -> (u <*> a) <+> (v <*> b) == gcd) pairs
+  where
+    maxDeg = max (deg a) (deg b)
+    pairs = [(a,b) | a <- polys, b <- polys]
+    polys = map ((<+> f0) . Poly) $ replicateM maxDeg allValues
+    allValues = [0..getTag (Proxy :: Proxy (Z a))-1]
+    gcd = gcdEucl a b
+
+{-
+I did it manually, writing code is hard.
+Z2: u = 1, v = 1
+Z3: u = x + 1, v = 2x
+Z5/Z7: i won't do it.
+It's technically difficult, I understand how it works, I'm on session. :(
+-}
+
+----------------------------------------------------------------------------
+-- 2.37
+----------------------------------------------------------------------------
+
+divisors :: forall a . (WithTag a) => Poly (Z a) -> [Poly (Z a)]
+divisors a =
+     filter (\b -> let (_,r) = a </> b in and [b /= f0, r == f0]) polys
+  where
+    polys = map ((<+> f0) . Poly) $ replicateM (deg a + 1) allValues
+    allValues = [0..getTag (Proxy :: Proxy a)-1]
+
+polyReducable :: forall a . (WithTag a) => Poly (Z a) -> Bool
+polyReducable a = any (\b -> b /= f1 && b /= a) $ divisors a
+
+{-
+polyReducable (Poly [1,0,1,1 :: Z Z2])
+False
+
+That's a pretty good proof in fact, because proving it formally
+also inclues some searching through possible variants. Let's say
+x^3 + x + 1 = (x^2 + a)(x + b). What a and b can be? Etc.
+-}
+
+----------------------------------------------------------------------------
+-- 2.38
+----------------------------------------------------------------------------
+
+{- I won't do it, it's stupid. I've written poly multiplication already. -}
+
+----------------------------------------------------------------------------
+-- 2.39
+----------------------------------------------------------------------------
+
+
+e239check :: Poly (Z Z7) -> Bool
+e239check p = all (\k -> (p <^> k) `mod'` pr /= f1) divisors
+  where
+    pr = Poly [1,0,1 :: Z Z7]
+    mod' a b = snd $ a </> b
+    divisors = filter (\b -> 48 `mod` b == 0) [1..24]
+
+e239 = do
+    print $ e239check $ Poly [5,2]
+    print $ e239check $ Poly [1,2]
+    print $ e239check $ Poly [1,1]
+
+{-
+I tried to write a more general solution, but failed to express the
+field in terms of haskell typeclasses. Too bad. Here's the output of
+e239:
+
+λ> e239
+False
+True
+False
+-}
+
+----------------------------------------------------------------------------
+-- 2.40
+----------------------------------------------------------------------------
+
+{-
+Well, first of all, R = Z/(p^e)Z is not a field, because p^e is not prime,
+that's the main thing. Any two fields with the same number of elements
+are isomorphic according to theorem 2.59, but since R is not a field, I
+can't say anything about isomorphism of F = F_(p^e) as a ring and R without
+reading a proof of isomorphism (and it's not there).
+
+Also Fermat's little theorem won't work in R because of that. Anything else?
+-}
+
+----------------------------------------------------------------------------
+-- 2.41
+----------------------------------------------------------------------------
+
+{-
+(a) Let's name 1 = e, 0 = z. e, 2e, 3e, 4e...ne = e (since field is finite).
+    Then ne = (n-1)e+e = e => (n-1)e = z.
+    It works in any ring btw.
+(b) Well, i'm proving it not exactly in the way hint suggests, but simpler:
+    m*e = z. Then let m = a*b. a*b*e = z, then a*(b*e) = a*s = z. Multiplying
+    both parts on s^(-1) we're getting a*e = z. But a is clearly less then m,
+    so that's a contradiction, m is not smallest. Then m doesn't factor.
+(c) First of all let's notice that for every k that's not in set E = {e,2e...pe}
+    there's exactly p elements in set Ek = {k+e,k+2e...k+pe}. Otherwise:
+    k + me = k, m < p. Then me = 0 (subtracted k). But p is minimal.
+    Same with m > p. So since field is finite, it can be divided into
+    the set of classes: first we take z and produce E, then we take k1 ∉ E
+    and produce Ek1, and so on, generating {0,k₁...kₙ} elements. Let's think
+    of vector space V where each component is some element from EKᵢ.
+
+    Let's suppose that the number of ks is 0, thus p = |F|. Then F is
+    obviously vector field of dimension 1, because check axioms on wikipedia.
+
+    For number of ks ≥ 1 we can do this trick: The dimension of this space is n
+    The vector itself will be n-component, each element taking value from
+    0 to p-1, and conversion to field is done with this formula:
+
+    Conv(x₁,x₂...xₙ) = Prod(k₁+x₁,k₂+x₂,...) - Prod(k₁,..kₙ).
+
+    Let's work with 2d vectors for now. Obviously (0,0) is converted
+    into z. Well, that's something. Additive inverse works as well.
+
+    I've got more thoughts on why it won't work and why none of this
+    appreaches can. In fact, any Conv function that produces element
+    s ∈ F will put s into some bucket Ek, so it will be possible to
+    represent vector in two ways at least, which is bad. We should
+    be able to derive n components given s ∈ F, but s ∈ F lies in one
+    class only. If we don't try to construct this mapping, the task
+    is just obvious and first paragraph of (c) proves everything needed.
+(d) Eeeh, i'm doing something wrong. TODO clear this out
 -}
