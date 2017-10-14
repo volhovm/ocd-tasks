@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP                        #-}
-{-# LANGUAGE TypeApplications           #-}
 {-# LANGUAGE DataKinds                  #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}
@@ -7,17 +6,18 @@
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE TupleSections              #-}
+{-# LANGUAGE TypeApplications           #-}
 {-# LANGUAGE UndecidableInstances       #-}
 {-# LANGUAGE ViewPatterns               #-}
 
 module Module2v10 where
 
 import           Control.Lens   (ix, (%~), (&), _1)
+import           Control.Monad  (replicateM)
 import           Data.Bifunctor (bimap)
-import Control.Monad (replicateM)
 import           Data.Bool      (bool)
 import           Data.Foldable  (foldl')
-import Data.List (intercalate)
+import           Data.List      (intercalate)
 import           Data.Proxy     (Proxy (..))
 import           Debug.Trace
 import           Prelude        hiding ((<*>))
