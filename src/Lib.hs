@@ -1,38 +1,54 @@
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE OverloadedStrings #-}
 -- | Some useful common functions extracted from tasks. I first solve
 -- them in per-section-modules, then transfer here and use in next
 -- sections. Not for real cryptographic use ofc.
 
 module Lib
        ( exp
+       , exEucl
        , relativePrimes
        , inverse
        , inverseP
        , order
+       , eulerPhiFast
+       , eulerPhiSlow
        , logD
        , logDTrialAndError
        , logDShank
        , crt
        ) where
 
+import           Universum              hiding (exp)
+import           Unsafe                 (unsafeHead)
+
 import           Control.Exception.Base (assert)
 import           Control.Monad          (forM_, when)
 import           Data.Bifunctor         (bimap)
-import           Data.List              (sortBy)
+import           Data.List              (nub, sortBy)
 import           Data.Maybe             (fromMaybe, isNothing)
+import           Data.Numbers.Primes    (isPrime, primeFactors)
 import           Data.Ord               (comparing)
 import           Debug.Trace
-import           Prelude                hiding (exp)
 
--- | Log exponential
+-- | Fast powering algorithm for calculating a^p (mod p).
 exp :: (Integral n) => n -> n -> n -> n
-exp _ g 0 = 0
-exp p g 1 = g `mod` p
-exp p g n = case n `mod` 2 of
-    0 -> (subexp * subexp) `mod` p
-    1 -> (subexp * subexp * g) `mod` p
+exp p g n = power g n
   where
-    !subexp = exp p g $ n `div` 2
+    pI = toInteger p
+    power a 0 = 0
+    power a 1 = a `mod` p
+    power a b = do
+        let (bdiv,bmod) = b `divMod` 2
+        let bnext = toInteger $ a `power` bdiv
+        if | bmod == 0 -> fromInteger $ (bnext * bnext) `mod` (toInteger p)
+           | otherwise -> fromInteger $ (((bnext * bnext) `mod` pI) * toInteger a) `mod` pI
+
+-- | For a,b returns (gcd,u,v) such that au + bv = gcd.
+exEucl :: (Integral n) => n -> n -> (n, n, n)
+exEucl 0 b = (b, 0, 1)
+exEucl a b =
+    let (g,s,t) = exEucl (b `mod` a) a
+    in (g, t - (b `div` a) * s, s)
 
 -- | Checks if every two elements of the list have gcd = 1
 relativePrimes :: (Integral n) => [n] -> Bool
@@ -42,23 +58,30 @@ relativePrimes l =
 -- | Multiplicative inverse modulo p using fermat's little
 -- theorem. Here's something about comparing fermat's little theorem
 -- approach and euclid's algorithm (implemented in this repo too):
+--
 -- http://www.ams.org/journals/mcom/1969-23-105/S0025-5718-1969-0242345-5/S0025-5718-1969-0242345-5.pdf
 inverseP :: (Integral n) => n -> n -> n
-inverseP a p = a `power` (p-2)
-  where
-    power a 0 = 0
-    power a 1 = a `mod` p
-    power a b = ((power a (b-1)) `mod` p) * a `mod` p
+inverseP _ p | not (isPrime p) = error "can't compute inverseP for non-prime"
+inverseP a p = exp p a (p-2)
 
 -- | Inverse for non-primes
 inverse :: (Integral n) => n -> n -> n
-inverse a n = head $ filter (\x -> x * a `mod` n == 1) [0..n-1]
+inverse a n =
+    if gcd' /= 1 then error "inverse: gcd is not 1"
+                 else u `mod` n
+  where
+    (gcd',u,_) = exEucl a n
 
-logD :: (Integral n) => n -> n -> n -> n
-logD p g h = let ans = logDTrialAndError p g h
-             in assert (exp p g ans == h) $
-                assert (ans < p) $
-                ans
+-- | Euler phi function iterative implementation.
+eulerPhiSlow :: (Integral n) => n -> Int
+eulerPhiSlow n = length $ filter (\x -> gcd n x == 1) [0..n-1]
+
+-- | Fast Euler calculation function using Euler's formula.
+eulerPhiFast :: (Integral n) => n -> Int
+eulerPhiFast n =
+    round $
+    toRational n *
+    product (map (\x -> 1 - 1 / (toRational x)) $ nub $ primeFactors n)
 
 -- FIXME ineffective, do lagrange instead
 order :: (Integral n) => n -> n -> Maybe n
@@ -70,10 +93,16 @@ order p g = case filter (\e -> exp p g e == 1) $ factors (p-1) of
     divides m n = n `mod` m == 0
     factors n = n : [x | x <- [1..n`div`2], x `divides` n]
 
+logD :: (Integral n) => n -> n -> n -> n
+logD p g h = let ans = logDTrialAndError p g h
+             in assert (exp p g ans == h) $
+                assert (ans < p) $
+                ans
+
 -- | Trial-and-error discrete logarithm solving algorithm
 logDTrialAndError :: (Integral n) => n -> n -> n -> n
 logDTrialAndError p g h =
-    fst . head $ filter ((== h) . snd) $
+    fst . unsafeHead $ filter ((== h) . snd) $
     map (\x -> (x, exp p g x)) (reverse [0..p-1])
 
 -- | Solving log problem with shank algorithm. Requires g to be in set
@@ -112,7 +141,7 @@ logDShank p g h
 crt :: [(Integer,Integer)] -> Integer
 crt [] = error "chinese called with empty list"
 crt xs | not (relativePrimes $ map snd xs) =
-             error $ "not relative primes: " ++ show (map snd xs)
+             error $ "not relative primes: " <> show (map snd xs)
 crt ((a₁,m₁):xs) = chineseGo xs (a₁ `mod` m₁) m₁
   where
     chineseGo [] c _              = c
