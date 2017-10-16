@@ -43,6 +43,19 @@ Just 1355
 -- 3.2
 ----------------------------------------------------------------------------
 
+{-
+x^e = c (mod p). Let s be solution. Let's look for solution in form ks.
+
+Then ks^e = c (mod p) ⇒ k^e = 1 (mod p). Since F_p has generator g,
+let k = g^t. So g^{et} = 1 (mod p) which leads to et = 0 (mod p-1).
+
+Let gcd(e,p-1) = ψ, then lcm(e,p-1) = e∙(p-1)/ψ.
+
+Let's take t = i(p-1)/ψ. Then g^(ie(p-1)/ψ) = 0 (mod (p-1)).
+
+And all {g^{i(p-1)/ψ}} are different, and i ∈ {0..ψ-1}.
+-}
+
 ----------------------------------------------------------------------------
 -- 3.3
 ----------------------------------------------------------------------------
