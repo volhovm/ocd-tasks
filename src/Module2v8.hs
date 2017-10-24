@@ -140,4 +140,15 @@ e224b p a b =
     check = exp (p * p) res 2 == a `mod` p2
     m = (b ^ 2) `div` p
 
------- 2.25 on paper
+------ 2.25
+
+{-
+1. We solve x^2 = a (mod p) and y^2 = b (mod q), then combine these results using
+CRT as described in section 2.8.1. So we get 4 answers, yes.
+
+2. Since s1..s4 are solutions of form:
+si = b1 mod p
+si = b2 mod p
+then some si - sj = 0 (mod p) or (mod q). We can iterate and try to guess.
+Let si - sj = 0 (mod p), then gcd(si-sj,pq) = p.
+-}
