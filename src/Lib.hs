@@ -30,19 +30,6 @@ import           Data.Numbers.Primes    (isPrime, primeFactors)
 import           Data.Ord               (comparing)
 import           Debug.Trace
 
--- | Fast powering algorithm for calculating a^p (mod p).
-exp :: (Integral n) => n -> n -> n -> n
-exp p g n = power g n
-  where
-    pI = toInteger p
-    power a 0 = 0
-    power a 1 = a `mod` p
-    power a b = do
-        let (bdiv,bmod) = b `divMod` 2
-        let bnext = toInteger $ a `power` bdiv
-        if | bmod == 0 -> fromInteger $ (bnext * bnext) `mod` (toInteger p)
-           | otherwise -> fromInteger $ (((bnext * bnext) `mod` pI) * toInteger a) `mod` pI
-
 -- | For a,b returns (gcd,u,v) such that au + bv = gcd.
 exEucl :: (Integral n) => n -> n -> (n, n, n)
 exEucl 0 b = (b, 0, 1)
@@ -71,6 +58,21 @@ inverse a n =
                  else u `mod` n
   where
     (gcd',u,_) = exEucl a n
+
+-- | Fast powering algorithm for calculating a^p (mod p).
+exp :: (Integral n) => n -> n -> n -> n
+exp p g n
+    | n < 0 = power (inverse g p) (-n)
+    | otherwise = power g n
+  where
+    pI = toInteger p
+    power a 0 = 0
+    power a 1 = a `mod` p
+    power a b = do
+        let (bdiv,bmod) = b `divMod` 2
+        let bnext = toInteger $ a `power` bdiv
+        if | bmod == 0 -> fromInteger $ (bnext * bnext) `mod` (toInteger p)
+           | otherwise -> fromInteger $ (((bnext * bnext) `mod` pI) * toInteger a) `mod` pI
 
 -- | Euler phi function iterative implementation.
 eulerPhiSlow :: (Integral n) => n -> Int
