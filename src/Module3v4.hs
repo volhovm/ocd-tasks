@@ -51,11 +51,14 @@ Let's check (n-1).
 2 = 0 (mod n) ?
 Well, not really.
 
-(d) Suppose n = p^2 * (q1*q2...qs) = p * Q.
+(d) Suppose n = p^2 * (q1*q2...qs) = p^2 * Q.
 
-??? dunno as well
+(n-1) is not a witness for sure (it doesn't work for 7*7*13)
+p^2 is not a witness as well.
+p seems to be witness though, same as Q. I can't prove it.
 
-(e) ???
+(e) It's trivial to check that, i don't really want to do it.
+
 -}
 
 ----------------------------------------------------------------------------
@@ -65,14 +68,14 @@ Well, not really.
 traceT :: b -> a -> a
 traceT _ = identity -- $ trace @Text
 
-fermatTest :: Integer -> Integer -> Bool
-fermatTest n a = exp n a n == a
+fermatWitness :: Integer -> Integer -> Bool
+fermatWitness n a = exp n a n /= a
 
 -- | Checks if number is witness.
 millerRabinTest :: Integer -> Integer -> Bool
 millerRabinTest n a
   | a <= 1 = False
-  | even n || gcd a n `notElem` [1,n] = traceT "A" True
+  | even n || gcd a n `notElem` [1,n] = True
   | otherwise = do
         let (k,kk) =
                 fromMaybe (error "must exist") $
@@ -81,9 +84,8 @@ millerRabinTest n a
         let q = (n - 1) `div` kk
         let ainit = exp n a q
         if ainit == 1
-            then traceT "B" False
-            else traceT "C" $
-                 not $ any (== (n-1)) $ take k $
+            then False
+            else not $ any (== (n-1)) $ take k $
                  iterate (\a -> a * a `mod` n) ainit
 
 -- | Does n iterations of Miller-Rabin.
@@ -98,13 +100,10 @@ millerRabinRandom iter n =
 
 e315 :: IO ()
 e315 = do
-    print =<< millerRabinRandom 10 1105
-    print =<< millerRabinRandom 10 294409
-    print =<< millerRabinRandom 10 294439
-    print =<< millerRabinRandom 10 118901509
-    print =<< millerRabinRandom 10 118901521
-    print =<< millerRabinRandom 10 118901527
-    print =<< millerRabinRandom 10 118915387
+    print =<<
+        forM_
+            [1105, 294409, 294439, 118901509, 118901521, 118901527, 118915387]
+            (millerRabinRandom 10)
 
 {-
 λ> e315
@@ -121,8 +120,13 @@ True
 -- 3.16
 ----------------------------------------------------------------------------
 
--- todo
+{-
+First of all, we've already shown (in 3.10) that it is possible to try
+factoring N successfully using only one (d,e) pair. Nevertheless,
 
+TODO
+
+-}
 
 ----------------------------------------------------------------------------
 -- 3.17 π(X)
