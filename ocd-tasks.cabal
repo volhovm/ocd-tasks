@@ -22,10 +22,13 @@ library
                      , Module2v10
 
                      , Module3v1
+                     , Module3v2
+                     , Module3v3
   build-depends:       base >=4.9 && <4.10
                      , bytestring >=0.10
                      , lens >= 4.14
                      , primes >=0.2
+                     , random >= 1.1
                      , universum
                      , unordered-containers >= 0.2.8.0
   hs-source-dirs:      src

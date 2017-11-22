@@ -4,14 +4,14 @@
 -- sections. Not for real cryptographic use ofc.
 
 module Lib
-       ( exp
-       , exEucl
-       , relativePrimes
-       , inverse
+       ( exEucl
+       , coprimes
        , inverseP
-       , order
-       , eulerPhiFast
+       , inverse
+       , exp
        , eulerPhiSlow
+       , eulerPhiFast
+       , order
        , logD
        , logDTrialAndError
        , logDShank
@@ -38,8 +38,8 @@ exEucl a b =
     in (g, t - (b `div` a) * s, s)
 
 -- | Checks if every two elements of the list have gcd = 1
-relativePrimes :: (Integral n) => [n] -> Bool
-relativePrimes l =
+coprimes :: (Integral n) => [n] -> Bool
+coprimes l =
     all ((== 1) . uncurry gcd) $ [(a,b) | a <- l, b <- l, a < b]
 
 -- | Multiplicative inverse modulo p using fermat's little
@@ -142,7 +142,7 @@ logDShank p g h
 -- a_i (mod mi) is a pattern for equations.
 crt :: [(Integer,Integer)] -> Integer
 crt [] = error "chinese called with empty list"
-crt xs | not (relativePrimes $ map snd xs) =
+crt xs | not (coprimes $ map snd xs) =
              error $ "not relative primes: " <> show (map snd xs)
 crt ((a₁,m₁):xs) = chineseGo xs (a₁ `mod` m₁) m₁
   where

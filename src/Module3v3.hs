@@ -4,7 +4,7 @@ module Module3v2 where
 
 import           Universum hiding (exp)
 
-import           Lib       (exEucl, exp)
+import           Lib       (eulerPhiFast, exEucl, exp)
 
 
 ----------------------------------------------------------------------------
@@ -38,9 +38,10 @@ rsaMultipleExponents n (e1,c1) (e2,c2) = do
     guard $ exp n ans e1 == c1
     pure ans
   where
+    p = toInteger $ eulerPhiFast n
     toField = (`mod` n)
     (gcd',u,v) = exEucl e1 e2
-    ans = (exp n c1 u * exp n c2 v) `mod` n
+    ans = (exp n c1 (u `mod` p) * exp n c2 (v `mod` p)) `mod` n
 
 {-
 λ> rsaMultipleExponents 1889570071 (1021763679,1244183534) (519424709,732959706)

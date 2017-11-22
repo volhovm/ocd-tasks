@@ -16,7 +16,7 @@ import           Lib                 (exp, inverse, relativePrimes)
 -- Accepts pairs of (aᵢ,mᵢ) where x = aᵢ (mod mᵢ).
 chinese :: [(Integer,Integer)] -> Integer
 chinese [] = error "chinese called with empty list"
-chinese xs | not (relativePrimes $ map snd xs) =
+chinese xs | not (coprimes $ map snd xs) =
              error $ "not relative primes: " ++ show (map snd xs)
 chinese ((a₁,m₁):xs) = chineseGo xs (a₁ `mod` m₁) m₁
   where
