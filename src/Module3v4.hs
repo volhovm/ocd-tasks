@@ -229,7 +229,55 @@ which is asymptotically equal to 1/ln(N)
 (c) Probability is 2 times bigger than in (b) because you now only consider
     odd half of (b) elements.
 
-(d) (e) : TODO
+-}
+
+checkPrimePart :: Integer -> Integer -> Double
+checkPrimePart p x = (log $ cast x) * lng (filter isPrime range) / lng range
+  where
+    cast :: (Integral a, Num b) => a -> b
+    cast = fromIntegral
+    lng = cast . length
+    range = filter ((== 1) . (`mod` p)) $
+            [round (0.7 * cast x) .. round (1.3 * cast x)]
+
+{-
+λ> 3/2 * 5/4 * 7/6
+2.1875
+λ> checkPrimePart (3*5*7) 10000000
+2.1764210146963654
+λ> checkPrimePart (3*5*7) 20000000
+2.189700932660001
+-}
+
+{-
+
+(d) If m is a single prime p, then P = s_p / ln(n), where s_p = p/(p-1)
+    If m is a product of distinct primes, then P = (∏s_{p_i}) / ln(n).
+
+Here's how I would prove the first statement:
+We know that for arbitrary N number of primes in [c1N, c2N] is N/lnN.
+It's easy to show that if we choose random sublist from [c1N, c2N] then
+the statement still holds.
+
+So let's assume first that we have p and we consider list of values
+that = 1 (mod p), but withoutt actually considering this property. There
+are still N/lnN primes out there. Now, notice that the only extra bit of
+information we get from the extra condition is that numbers we consider
+can be divisible by anything except for p. So we have this N/lnN primes,
+but now they are distributed not among N numbers, but among (p-1)/p * N,
+because 1/p of N are not primes for sure. This leads to:
+
+N / lnN / ((p-1)/p * N) = p/(p-1) * lnN, which is exactly what we're looking for.
+
+Regarding the second equation, it's the same. There were N numbers, but
+gcd(k, m) = 1, and m = ∏p_i, so for each p_i we're sure (p_i - 1)/p_i
+part of N is not prime. Applied in any order, we have ∏(p_i - 1)/p_i * N
+part of N that is still suspicious and can contain those N/lnN primes.
+This leads exactly to the statement.
+
+(e) Knowing the fact that we have p_i^r_i for some r_i actually doesn't
+add anything to the proof of (d), so, still, the probability is same as
+in (d), but we consider every prime of factorization only once.
 
 -}
 
