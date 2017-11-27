@@ -24,8 +24,10 @@ library
                      , Module3v1
                      , Module3v2
                      , Module3v3
+                     , Module3v4
   build-depends:       base >=4.9 && <4.10
                      , bytestring >=0.10
+                     , easyplot >= 1.0
                      , lens >= 4.14
                      , primes >=0.2
                      , random >= 1.1

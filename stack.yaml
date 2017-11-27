@@ -2,6 +2,7 @@ resolver: lts-9.1
 packages:
 - '.'
 nix:
-  packages: [git openssl]
+  packages: [git openssl gnuplot]
 extra-deps: 
 - universum-0.7.0
+- easyplot-1.0

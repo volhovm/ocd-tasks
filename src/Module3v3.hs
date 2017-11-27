@@ -1,10 +1,10 @@
 {-# LANGUAGE ViewPatterns #-}
 
-module Module3v2 where
+module Module3v3 () where
 
-import           Universum hiding (exp)
+import Universum hiding (exp)
 
-import           Lib       (eulerPhiFast, exEucl, exp)
+import Lib (eulerPhiFast, exEucl, exp)
 
 
 ----------------------------------------------------------------------------

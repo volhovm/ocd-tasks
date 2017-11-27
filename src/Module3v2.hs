@@ -1,15 +1,15 @@
 -- | RSA basics
 
-module Modulev3v2 where
+module Module3v2 () where
 
-import           Universum           hiding (exp)
-import           Unsafe              (unsafeHead)
+import Universum hiding (exp)
+import Unsafe (unsafeHead)
 
-import qualified Data.HashSet        as HS
-import           Data.List           (nub)
-import           Data.Numbers.Primes (isPrime, primeFactors, primes)
+import qualified Data.HashSet as HS
+import Data.List (nub)
+import Data.Numbers.Primes (isPrime, primeFactors, primes)
 
-import           Lib                 (crt, exp, inverse)
+import Lib (crt, exp, inverse)
 
 data SecKeyRSA = SecKeyRSA
     { rsP :: Integer

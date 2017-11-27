@@ -1,15 +1,15 @@
 module Module2v8 () where
 
-import           Control.Monad       (guard)
-import           Data.Bifunctor      (bimap)
-import           Data.List           (nub, sortBy)
-import           Data.Maybe          (catMaybes, isJust)
-import           Data.Numbers.Primes (primeFactors)
-import           Data.Ord            (comparing)
-import           Debug.Trace
-import           Prelude             hiding (exp)
+import Control.Monad (guard)
+import Data.Bifunctor (bimap)
+import Data.List (nub, sortBy)
+import Data.Maybe (catMaybes, isJust)
+import Data.Numbers.Primes (primeFactors)
+import Data.Ord (comparing)
+import Debug.Trace
+import Prelude hiding (exp)
 
-import           Lib                 (exp, inverse, relativePrimes)
+import Lib (coprimes, exp, inverse)
 
 ------ Let's write chinese algorithm first
 

@@ -1,14 +1,16 @@
 -- | Primality checks.
 
-module Module3v4 where
+module Module3v4 (checkBPlot) where
 
-import           Universum           hiding (exp)
+import Universum hiding (exp)
 
-import           Data.List           (nub)
-import           Data.Numbers.Primes (isPrime, primeFactors, primes)
-import           System.Random       (randomRIO)
+import Data.List (nub)
+import Data.Numbers.Primes (isPrime, primeFactors, primes)
+import Graphics.EasyPlot
+import System.IO.Unsafe (unsafePerformIO)
+import System.Random (randomRIO)
 
-import           Lib
+import Lib
 
 ----------------------------------------------------------------------------
 -- 3.14 Carmichael test
@@ -97,6 +99,11 @@ millerRabinRandom iter n =
         let res = millerRabinTest n v
         --when (not res) $ print $ show v <> " is not a witness for " <> show n
         pure res
+
+isPrimeMR :: (Integral a) => Int ->a -> Bool
+isPrimeMR n p
+    | p < 0 = False
+    | otherwise = unsafePerformIO $ not <$> millerRabinRandom n (fromIntegral p)
 
 e315 :: IO ()
 e315 = do
@@ -212,9 +219,26 @@ P(c1,c2,N) = 1/(c2-c1) * (ln(c1^c2/c2^c1 * N^{c2-c1}) / (ln(c1*N) ln(c2*N))
            = { let c3 = root{c2-c1}[c1^c2/c2^c1]} }
            = 1 * ln(c3 * N) / (ln(c1*N) ln(c2*N))
 
-which is asymptotically equal to 1/ln(N)
+which is asymptotically equal to 1/ln(N).
+
+Though, admit, that π = x/lnx approximation works only for big x, so
+if c1 is really small, convergence will be slow too.
 
 -}
+
+checkB :: Double -> Double -> Integer -> (Double,Double)
+checkB c1 c2 n = (approx,real)
+  where
+    real = 1 / log (fromInteger n)
+    approx = (fromIntegral $ length $ filter (isPrimeMR 3) [(c1'::Integer)..c2']) /
+             (fromIntegral $ c2' - c1')
+    c1',c2' :: Integral a => a
+    c1' = round $ fromIntegral n * c1
+    c2' = round $ fromIntegral n * c2
+
+-- for sure
+checkBPlot = plot X11 $ Function2D [] [For [1000,10000..300000]] $
+             \n -> let (a,b) = checkB 0.9 1.3 (round n) in b - a
 
 ----------------------------------------------------------------------------
 -- 3.20 Probability of getting a prime modulo something
