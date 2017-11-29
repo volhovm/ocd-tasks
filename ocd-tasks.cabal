@@ -27,6 +27,7 @@ library
                      , Module3v4
   build-depends:       base >=4.9 && <4.10
                      , bytestring >=0.10
+                     , containers >= 0.5.7.1
                      , easyplot >= 1.0
                      , lens >= 4.14
                      , primes >=0.2
