@@ -260,7 +260,31 @@ Second equation is symmetric. We get:
 1 - ε > ln(sqrt(lnx*lnlnx)) / lnlnx -> 1/2
 1 - ε > 1/2 ⇒ ε < 1/2.
 
-(b) sorb
+(b) I've actually done that!
+
+u = lnx/(c*sqrt(lnx*lnlnx))
+
+L(X)^(-1/2c * (1+o(1))) = {what we want to get}
+  = exp(-(sqrt(lnx * lnlnx))/2c * (1+o(1)))
+
+What we have is u^(-u) = exp(-lnu * u)
+  = exp( - ln[lnx/(c*sqrt(lnx * lnlnx))] * lnx/(c*sqrt(lnx * lnlnx)) )
+  = exp( - lnx/(c*sqrt(lnx * lnlnx)) * (lnlnx - ln(c*sqrt(..))) )
+  = exp( - lnx*lnlnx/(c*sqrt(lnx * lnlnx)) * (1 - ln(c*sqrt(..))/lnlnx) )
+  = exp( - sqrt(lnx * lnlnx)/c * (1 - ln(c*sqrt(..))/lnlnx) )
+
+It's almost what we need. Let's investigate that last bit:
+
+ln(c*sqrt(..))/lnlnx) = (lnc + 1/2 (lnlnx + lnlnlnx)) / lnlnx =
+  = 1/2 + (lnc + lnlnlnx) / lnlnx
+  = 1/2 + o(1)
+
+Continuing expanding u^(-u):
+exp( - sqrt(lnx * lnlnx)/c * (1 - ln(c*sqrt(..))/lnlnx) )
+  = exp( - sqrt(lnx * lnlnx)/c * (1 - 1/2 + o(1)) )
+  = exp( - sqrt(lnx * lnlnx)/2c * (1 + o(1)))
+
+Done.
 
 -}
 
