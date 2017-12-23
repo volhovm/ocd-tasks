@@ -134,6 +134,13 @@ finite number of l'hopital's rule application that will lead to form:
 
 where c is somewhat a(a-1)(a-2)...(a-n)/b.
 
+Next, let's compare lnx^a and (lnx - lnlnx). It's easy to show that
+lnx ~ (lnx - lnlnx) = ln(x/lnx)
+(lnx - lnlnx) = o(lnx^a) for all a > 1
+(lnx - lnlnx) = w(lnx^a) for all a < 1
+
+Alright, this seems obvious.
+
 
 1. Upper bound.
 
@@ -219,8 +226,13 @@ in bits of n.
 
 lim x^a / (x * e^(lnlnx^b)) = lim x^(a-1) / e^(f(x)) = 0
 
-(c) :(
+(c) It's asymptotically less than e^((lnx)^c) for any c > 2*a. b doesn't matter.
 
+a,b > 1
+lim exp(lnx^a * lnlnx^b) / exp(lnx^c) = 0 for what c?
+    lim $ lnx^a * lnlnx^b - lnx^c
+  = lim $ lnx^a (lnlnx^b - lnx^{c-a})
+  = -∞, if c - a > a.
 
 -}
 
@@ -245,6 +257,33 @@ lim(ln(sqrt(lnx*lnlnx)) / lnlnx) =
 So ε < 1/2.
 
 Second equation is symmetric. We get:
-1 - e > ln(sqrt(lnx*lnlnx)) / lnlnx
+1 - ε > ln(sqrt(lnx*lnlnx)) / lnlnx -> 1/2
+1 - ε > 1/2 ⇒ ε < 1/2.
+
+(b) sorb
 
 -}
+
+----------------------------------------------------------------------------
+-- 3.33 Optmizing random search of B-smooth numbers
+----------------------------------------------------------------------------
+
+{-
+(a) Trivial.
+a^2 - N ≤ 2Ksqrt(N) + K^2.
+a ∈ [sqrt(N), sqrt(N)+K]. Just substitute.
+N + 2Ksqrt(N) + K^2 - N ≤ 2Ksqrt(N) + K^2
+2Ksqrt(N) + K^2 ≤ 2Ksqrt(N) + K^2.
+Well, yes.
+
+(b)
+-}
+
+----------------------------------------------------------------------------
+-- 3.34 Quadratic sieve
+----------------------------------------------------------------------------
+
+quadSieve :: Integer -> Integer -> [[Integer]]
+quadSieve n b = undefined
+  where
+    f t = t * t - n
