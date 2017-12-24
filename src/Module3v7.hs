@@ -5,7 +5,10 @@ module Module3v7 () where
 import Universum hiding (exp)
 import qualified Universum
 
+import Control.Lens (ix, makeLenses, uses, (%=))
+import qualified Data.Map.Strict as M
 import Data.Numbers.Primes (isPrime, primeFactors, primes)
+import qualified Data.Set as S
 
 import Lib
 
@@ -300,14 +303,79 @@ N + 2Ksqrt(N) + K^2 - N ≤ 2Ksqrt(N) + K^2
 2Ksqrt(N) + K^2 ≤ 2Ksqrt(N) + K^2.
 Well, yes.
 
-(b)
+(b) sqrt(ln(x^(1/s))*lnln(x^(1/s))
+  = sqrt(1/s * lnx*ln(1/s*lnx))
+  = sqrt(1/s * lnx*(ln1/s + lnlnx))
+  = 1/sqrt(s) * sqrt(lnx * (o(1) + lnlnx))
+  ~ 1/sqrt(s) * sqrt(lnx * lnlnx)
+  QED
+
+(c)
 -}
 
 ----------------------------------------------------------------------------
 -- 3.34 Quadratic sieve
 ----------------------------------------------------------------------------
 
-quadSieve :: Integer -> Integer -> [[Integer]]
-quadSieve n b = undefined
+data SieveState = SieveState
+    { _sVector      :: [Integer]
+    , _sHasNoSols   :: Set Integer
+    , _sPrimePowers :: Map Integer Integer
+    } deriving Show
+
+makeLenses ''SieveState
+
+-- | Performs quadratic sieve from l to h on @(l,h)@, giving prime @n@
+-- to work with. @b@ is maximum prime we'll sieve with (b-smoothieness
+-- parameter ^_^).
+quadSieve :: (Integer,Integer) -> Integer -> Integer -> [Integer]
+quadSieve (l,h) n b =
+    filterRes $ _sVector $
+    execState (sieve 2) (SieveState (map f [l..h]) mempty mempty)
   where
+    filterRes :: [Integer] -> [Integer]
+    filterRes = map fst . filter (\(_,d) -> d == 1) . zip [l..h]
+
     f t = t * t - n
+
+    doSieve :: MonadState SieveState m => Integer -> Integer -> [Integer] -> m ()
+    doSieve realP p sols = do
+      let startIxs = mapMaybe (\s -> (\x -> x-l) <$> find (\x -> (x `mod` realP) == s) [l..h]) sols
+      forM_ startIxs $ \startIx -> do
+        let indices :: [Int]
+            indices = map fromInteger $ takeWhile (<= (h-l)) $ iterate (+realP) startIx
+        forM_ indices $ \i -> sVector . ix i %= (`div` p)
+
+    sieve :: MonadState SieveState m => Integer -> m ()
+    sieve curP | curP > b = pass
+    sieve curP = do
+        when (curP > h) $ error "aoeu"
+        let pPowers = (takeWhile (<= h) $ iterate (*curP) curP)
+        primeBase <- uses sPrimePowers $ M.lookup curP
+        hasNoSolsForSure <- uses sHasNoSols $ S.member curP
+        let skipCases =
+                or [ isNothing primeBase && not (isPrime curP)
+                    -- current number is not a prime (power)
+                   , hasNoSolsForSure
+                    -- it doesn't has sols for sure (lol)
+                   ]
+        unless skipCases $ do
+            case filter (\x -> f x `mod` curP == 0) [0..curP] of
+                [] -> forM_ pPowers (\x -> sHasNoSols %= S.insert x)
+                -- number is prime base
+                xs | Just pBase <- primeBase -> doSieve curP pBase xs
+                xs -> do
+                    doSieve curP curP xs
+                    forM_ pPowers $ \x -> sPrimePowers %= M.insert x curP
+        sieve $ curP + 1
+
+e334 :: IO ()
+e334 = do
+    print $ quadSieve (23,38) 493 11
+    print $ quadSieve (23,50) 493 16
+
+{-
+λ> e334
+[23,25]
+[23,25,31,47]
+-}
