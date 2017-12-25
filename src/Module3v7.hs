@@ -43,7 +43,7 @@ e328CounterArgument b =
 
 e328c :: [Integer]
 e328c = filter (not . bPowerSmooth 10) [84,141,171,208,224,318,325,366,378,390,420,440,504
-                                      ,530,707,726,758,765,792,817]
+                                       ,530,707,726,758,765,792,817]
 
 hypo1 :: Integer -> Bool
 hypo1 n = lcm1 `mod` (n+1) /= 0
@@ -175,7 +175,6 @@ lim lnx^a / exp(sqrt(lnx * lnlnx))
 
 (a) Proving subexponential growth for a > 1.
 
-
 1. Upper bound. We'll do the same thing as in 3.30.
 
 lim(exp((lnx)^(1/a) * (lnlnx)^(1/b)))/x^α)
@@ -207,15 +206,10 @@ lim lnx^α / (lnx)^(1/a) * (lnlnx)^(1/b)
   = lim exp(α*lnlnx - (lnx)^(1/a) * (lnlnx)^(1/b))
   = lim exp(lnlnx(α - (lnx)^(1/a) * (lnlnx)^(1/b - 1))
 
-Let's prove that
-  lnlnx grows to ∞ slower than
-  (lnx)^(1/a) * (lnlnx)^(1/b - 1) grows to ∞.
+lnlnx → ∞,
+- (lnx)^(1/a) * (lnlnx)^(1/b - 1) → - ∞
 
-lnlnx / (lnx)^(1/a) * (lnlnx)^(1/b - 1)
-  = lnlnx^(2 - 1/b) / lnx^(1/a)
-
-Same works. For a > 0 and b > 1/2 this holds. This is not exactly
-what i was asked to prove, but i'm kinda tired :p
+So product → -∞, for every a and b.
 
 (b) Superexponential growth
 
@@ -326,8 +320,8 @@ data SieveState = SieveState
 makeLenses ''SieveState
 
 -- | Performs quadratic sieve from l to h on @(l,h)@, giving prime @n@
--- to work with. @b@ is maximum prime we'll sieve with (b-smoothieness
--- parameter ^_^).
+-- to work with. @b@ is a maximum prime we'll sieve with
+-- (b-smoothieness parameter ^_^).
 quadSieve :: (Integer,Integer) -> Integer -> Integer -> [Integer]
 quadSieve (l,h) n b =
     filterRes $ _sVector $
@@ -349,7 +343,6 @@ quadSieve (l,h) n b =
     sieve :: MonadState SieveState m => Integer -> m ()
     sieve curP | curP > b = pass
     sieve curP = do
-        when (curP > h) $ error "aoeu"
         let pPowers = (takeWhile (<= h) $ iterate (*curP) curP)
         primeBase <- uses sPrimePowers $ M.lookup curP
         hasNoSolsForSure <- uses sHasNoSols $ S.member curP
@@ -357,7 +350,7 @@ quadSieve (l,h) n b =
                 or [ isNothing primeBase && not (isPrime curP)
                     -- current number is not a prime (power)
                    , hasNoSolsForSure
-                    -- it doesn't has sols for sure (lol)
+                    -- it doesn't have sols for sure (lol)
                    ]
         unless skipCases $ do
             case filter (\x -> f x `mod` curP == 0) [0..curP] of
