@@ -16,19 +16,20 @@ module Lib
        , logDTrialAndError
        , logDShank
        , crt
+       , bsmooth
        ) where
 
-import           Universum              hiding (exp)
-import           Unsafe                 (unsafeHead)
+import Universum hiding (exp)
+import Unsafe (unsafeHead)
 
-import           Control.Exception.Base (assert)
-import           Control.Monad          (forM_, when)
-import           Data.Bifunctor         (bimap)
-import           Data.List              (nub, sortBy)
-import           Data.Maybe             (fromMaybe, isNothing)
-import           Data.Numbers.Primes    (isPrime, primeFactors)
-import           Data.Ord               (comparing)
-import           Debug.Trace
+import Control.Exception.Base (assert)
+import Control.Monad (forM_, when)
+import Data.Bifunctor (bimap)
+import Data.List (nub, sortBy)
+import Data.Maybe (fromMaybe, isNothing)
+import Data.Numbers.Primes (isPrime, primeFactors)
+import Data.Ord (comparing)
+import Debug.Trace
 
 -- | For a,b returns (gcd,u,v) such that au + bv = gcd.
 exEucl :: (Integral n) => n -> n -> (n, n, n)
@@ -153,3 +154,7 @@ crt ((a₁,m₁):xs) = chineseGo xs (a₁ `mod` m₁) m₁
           m' = inverse mprod m
           y = (m' * ((a - c) `mod` m)) `mod` m
           c' = c + mprod * y
+
+-- | Checks if given numebr is b-smooth.
+bsmooth :: Integer -> Integer -> Bool
+bsmooth b = all (<= b) . primeFactors

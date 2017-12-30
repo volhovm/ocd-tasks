@@ -10,8 +10,6 @@ import qualified Data.Map.Strict as M
 import Data.Numbers.Primes (isPrime, primeFactors, primes)
 import qualified Data.Set as S
 
-import Lib
-
 ----------------------------------------------------------------------------
 -- 3.27 ψ function
 ----------------------------------------------------------------------------
