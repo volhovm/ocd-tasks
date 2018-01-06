@@ -25,6 +25,11 @@ library
                      , Module3v2
                      , Module3v3
                      , Module3v4
+                     , Module3v5
+                     , Module3v6
+                     , Module3v7
+                     , Module3v8
+                     , Module3v9
   build-depends:       base >=4.9 && <4.10
                      , bytestring >=0.10
                      , containers >= 0.5.7.1

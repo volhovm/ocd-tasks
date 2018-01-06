@@ -5,7 +5,7 @@ module Module3v8 () where
 import Universum hiding (exp)
 import Unsafe (unsafeHead)
 
-import Control.Lens (ix, uses, (%=), (.=))
+import Control.Lens (at, ix, uses, (%=), (.=))
 import Data.List (last, (!!))
 import qualified Data.Map.Strict as M
 import Data.Numbers.Primes (isPrime, primeFactors, primes)
