@@ -150,19 +150,11 @@ If p = 3 (mod 4), then p-1 = 2 * m, where m is odd, because p-1 = 2 (mod 4).
 How does make sense? I guess it means "you can compute any square root, not
 just for p = 3 (mod 4)".
 
-The question is:
-Why will it iterate s steps? No idea appeared after an ~hour of considerations.
-Which numbers have 2^s-roots? g^{i*2^s} for i ∈ [0..m-1] are,
-exactly m numbers. It's easy to show that for any other a = g^n = g^{km+i}
-will converge to these m numbers after s times squared:
-
-g^{(km+i)*2^s} = g^{km*2^s + i*2^s} = g^{k(p-1)}g^{i*2^s}.
-
-So there are only m numbers that have 2^s-roots in F_p. On the other hand,
-we don't really need to search for 2^s roots, as whenever we get some
-h = g^i, if i is odd, we take root from g^(-1)h, and this process never
-converges. The power i decreases unless it's 1, but then we take square root from
-sqrt(g^(-1)g) = -1 and continue, whatever the number is.
+First s iterations of taking square root from h or g^(-1)h lead to
+both roots having the same parity, because for arbitrary square roots
+a nd b, log(a) - log(b) = r + (p-1)/2 - r = m * 2^(s-1). So first s
+iterations of taking square root will lead to the same parity of
+roots.
 
 -}
 
@@ -184,7 +176,7 @@ Weird thing though, in group F_{1223} every number has qubic residue!
 (⇒) c^3 = a (mod p), then log(c^3) = log(a) (mod p-1), then log(a) = 3logc (mod p-1).
 (⇐) log(a) = 3k, then a = g^3k = (g^k)^3
 
-(d) Since p = 3k + 2, p-1 = 2k + 1, every number in [1..(p-1)] is
+(d) Since p = 3k + 2, p-1 = 3k + 1, every number in [1..(p-1)] is
 congruent to 3k for some k (Iterating 3i gives 0,3..3k, 2,5..3k-1, 1,4..3k-2)
 -}
 
