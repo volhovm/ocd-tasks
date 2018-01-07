@@ -17,6 +17,7 @@ module Lib
        , logDShank
        , crt
        , bsmooth
+       , generator
        ) where
 
 import Universum hiding (exp)
@@ -158,3 +159,9 @@ crt ((a₁,m₁):xs) = chineseGo xs (a₁ `mod` m₁) m₁
 -- | Checks if given numebr is b-smooth.
 bsmooth :: Integer -> Integer -> Bool
 bsmooth b = all (<= b) . primeFactors
+
+-- | Naive search for any group generator.
+generator :: Integer -> Integer
+generator p =
+    fromMaybe (error "should exist") $
+    find (\g -> length (ordNub $ map (exp p g) [1..p-1]) == fromIntegral p-1) [2..p-1]
