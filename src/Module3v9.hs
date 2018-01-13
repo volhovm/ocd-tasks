@@ -13,7 +13,7 @@ import qualified Data.Set as S
 import qualified Data.Text as T
 import System.Random (randomRIO)
 
-import Lib
+import Lib (exp)
 
 ----------------------------------------------------------------------------
 -- 3.37 Simple congruence problems

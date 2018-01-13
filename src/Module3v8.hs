@@ -61,7 +61,6 @@ gaussSolve p matrix = do
                 x <- ix2 i y
                 ix j . ix y %= (\e -> e `sub` (s `mul` x))
 
-
     initialSort = sortBy (comparing $ length . takeWhile (== 0))
 
 testGauss :: IO ()
@@ -119,6 +118,8 @@ e336 = do
     sols2 <- map last <$> gaussSolve 2 m
     print sols1
     print sols2
+    -- [8195,1299,7463]
+    -- [0,0,0]
     let solsrly = map (\(e1,e2) -> crt [(e1,9539),(e2,2)]) $ sols1 `zip` sols2
     -- [17734,10838,17002]
     -- (b)

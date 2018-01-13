@@ -18,6 +18,7 @@ module Lib
        , crt
        , bsmooth
        , generator
+       , isSquareRoot
        ) where
 
 import Universum hiding (exp)
@@ -165,3 +166,21 @@ generator :: Integer -> Integer
 generator p =
     fromMaybe (error "should exist") $
     find (\g -> length (ordNub $ map (exp p g) [1..p-1]) == fromIntegral p-1) [2..p-1]
+
+-- | Calculating Jacobi symbol.
+isSquareRoot :: Integer -> Integer -> Integer
+isSquareRoot a0 b0 = go a0 b0
+  where
+    go a b
+        | (a `mod` b) == b-1 = case b `mod` 4 of
+            1 -> 1
+            3 -> -1
+        | (a `mod` b) == 2 = case b `mod` 8 of
+            1 -> 1
+            7 -> 1
+            3 -> -1
+            5 -> -1
+        | even a = go 2 b * go (a `div` 2) b
+        | otherwise = case (a `mod` 4, b `mod` 4) of
+            (3,3) -> go (-1) a * go (b `mod` a) a
+            _     -> go (b `mod` a) a
