@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-unused-top-binds #-}
 {-# LANGUAGE ViewPatterns #-}
 
 module Module3v3 () where

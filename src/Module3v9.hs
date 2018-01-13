@@ -1,16 +1,11 @@
+{-# OPTIONS_GHC -fno-warn-unused-top-binds #-}
+
 -- | Quadratic reciprocity
 
 module Module3v9 () where
 
 import Universum hiding (exp)
-import Unsafe (unsafeHead)
 
-import Control.Lens (at, ix, uses, (%=), (.=))
-import Data.List (last, (!!))
-import qualified Data.Map.Strict as M
-import Data.Numbers.Primes (isPrime, primeFactors, primes)
-import qualified Data.Set as S
-import qualified Data.Text as T
 import System.Random (randomRIO)
 
 import Lib (exp)
@@ -116,11 +111,13 @@ isSquareRoot = go
         | (a `mod` b) == b-1 = case b `mod` 4 of
             1 -> 1
             3 -> -1
+            _ -> error "isSquareRoot: can't happen (1)"
         | (a `mod` b) == 2 = case b `mod` 8 of
             1 -> 1
             7 -> 1
             3 -> -1
             5 -> -1
+            _ -> error "isSquareRoot: can't happen (2)"
         | even a = go 2 b * go (a `div` 2) b
         | otherwise = case (a `mod` 4, b `mod` 4) of
             (3,3) -> go (-1) a * go (b `mod` a) a
@@ -193,4 +190,5 @@ e341b = do
        then print a >> print b
        else e341b
 
+qubicResidue :: Integer -> Integer -> Maybe Integer
 qubicResidue p a = find (\x -> exp p x 3 == a) [1..p-1]

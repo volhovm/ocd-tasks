@@ -1,10 +1,11 @@
+{-# OPTIONS_GHC -fno-warn-unused-top-binds #-}
+
 -- | Primality checks.
 
 module Module3v4 (checkBPlot) where
 
 import Universum hiding (exp)
 
-import Data.List (nub)
 import Data.Numbers.Primes (isPrime, primeFactors, primes)
 import Graphics.EasyPlot
 import System.IO.Unsafe (unsafePerformIO)
@@ -82,13 +83,13 @@ millerRabinTest n a
         let (k,kk) =
                 fromMaybe (error "must exist") $
                 find (\(_,v) -> (n - 1) `mod` v == 0 && odd ((n - 1) `div` v)) $
-                iterate (\(k,v) -> (k+1,v*2)) (1,2)
+                iterate (\(k',v') -> (k'+1,v'*2)) (1,2)
         let q = (n - 1) `div` kk
         let ainit = exp n a q
         if ainit == 1
             then False
             else not $ any (== (n-1)) $ take k $
-                 iterate (\a -> a * a `mod` n) ainit
+                 iterate (\x -> x * x `mod` n) ainit
 
 -- | Does n iterations of Miller-Rabin.
 millerRabinRandom :: Int -> Integer -> IO Bool
@@ -143,7 +144,7 @@ primesCount :: Integral n => n -> n
 primesCount x = fromIntegral $ length $ takeWhile (<x) primes
 
 primesLimit :: Double -> Double
-primesLimit x = (fromIntegral $ primesCount (round x)) * (log x) / x
+primesLimit x = (fromInteger $ primesCount (round x)) * (log x) / x
 
 {-
 It does, yes.
@@ -231,14 +232,17 @@ checkB c1 c2 n = (approx,real)
   where
     real = 1 / log (fromInteger n)
     approx = (fromIntegral $ length $ filter (isPrimeMR 3) [(c1'::Integer)..c2']) /
-             (fromIntegral $ c2' - c1')
+             (fromInteger $ c2' - c1')
     c1',c2' :: Integral a => a
     c1' = round $ fromIntegral n * c1
     c2' = round $ fromIntegral n * c2
 
 -- for sure
-checkBPlot = plot X11 $ Function2D [] [For [1000,10000..300000]] $
-             \n -> let (a,b) = checkB 0.9 1.3 (round n) in b - a
+checkBPlot :: IO ()
+checkBPlot =
+    void $
+    plot X11 $ Function2D [] [For [1000,10000..300000]] $
+    \n -> let (a,b) = checkB 0.9 1.3 (round (n :: Double)) in b - a
 
 ----------------------------------------------------------------------------
 -- 3.20 Probability of getting a prime modulo something
@@ -266,7 +270,7 @@ checkPrimePart p x = (log $ cast x) * lng (filter isPrime range) / lng range
     cast = fromIntegral
     lng = cast . length
     range = filter ((== 1) . (`mod` p)) $
-            [round (0.7 * cast x) .. round (1.3 * cast x)]
+            [round ((0.7 :: Double) * cast x) .. round ((1.3 :: Double) * cast x)]
 
 {-
 λ> 3/2 * 5/4 * 7/6

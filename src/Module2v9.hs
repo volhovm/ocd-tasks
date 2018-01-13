@@ -1,15 +1,15 @@
+{-# OPTIONS_GHC -fno-warn-unused-top-binds #-}
+
 module Module2v9 where
 
-import           Control.Exception.Base (assert)
-import           Control.Monad          (forM_, unless)
-import           Data.List              (group)
-import           Data.Maybe             (fromMaybe, isJust, isNothing)
-import           Data.Numbers.Primes    (isPrime, primeFactors)
-import           Debug.Trace
-import           Prelude                hiding (exp)
+import Universum hiding (exp)
+import Unsafe (unsafeHead)
 
-import           Lib                    (crt, exp, logD, logDShank, logDTrialAndError,
-                                         order)
+import Control.Exception.Base (assert)
+import Data.List (group)
+import Data.Numbers.Primes (primeFactors)
+
+import Lib (crt, exp, logD, logDShank, order)
 
 
 ----------------------------------------------------------------------------
@@ -47,19 +47,15 @@ logDPohligHellman p g h
             hi = exp p h ni
             yi = logDShank p gi hi
         in
---           trace ("qiei = " ++ show qiei) $
---           trace ("ni = " ++ show ni) $
---           trace ("gi = " ++ show gi) $
---           trace ("hi = " ++ show hi) $
---           trace ("yi = " ++ show yi) $
            (yi `mod` qiei,qiei)
     factors = case _N of
       1 -> [(1,1)]
-      n -> groupMany $ primeFactors _N
-    groupMany = map (\x -> (head x, fromIntegral $ length x)) . group
+      _ -> groupMany $ primeFactors _N
+    groupMany = map (\x -> (unsafeHead x, fromIntegral $ length x)) . group
     _N = fromMaybe (error "logDPohligHellman called with bad g") _N0
     _N0 = order p g
 
+-- Works really slow, doesn't mean it's broken.
 testDPohlig :: IO ()
 testDPohlig =
     forM_
@@ -70,11 +66,11 @@ testDPohlig =
         , g < p
         , b < p] $
     \(p, g, b) -> do
+        putText "mda"
         let h = exp p g b
-        let label = show g ++ "^" ++ show b ++ " ~? " ++ show h ++ " (mod " ++ show p ++ ")"
---        putStrLn label
-        let b = logDPohligHellman p g h
-        unless (exp p g b == h) $ error $ "pohlig-hellman failed: " ++ label
+        let label = show g <> "^" <> show b <> " ~? " <> show h <> " (mod " <> show p <> ")"
+        let b' = logDPohligHellman p g h
+        unless (exp p g b' == h) $ error $ "pohlig-hellman failed: " <> label
 
 {-
 λ> logDPohligHellman 433 7 166

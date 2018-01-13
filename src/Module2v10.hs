@@ -9,20 +9,22 @@
 {-# LANGUAGE TypeApplications           #-}
 {-# LANGUAGE UndecidableInstances       #-}
 {-# LANGUAGE ViewPatterns               #-}
+{-# OPTIONS_GHC -fno-warn-unused-top-binds #-}
+{-# OPTIONS_GHC -fno-warn-type-defaults #-}
 
 module Module2v10 where
 
-import           Control.Lens   (ix, (%~), (&), _1)
-import           Control.Monad  (replicateM)
-import           Data.Bifunctor (bimap)
-import           Data.Bool      (bool)
-import           Data.Foldable  (foldl')
-import           Data.List      (intercalate)
-import           Data.Proxy     (Proxy (..))
-import           Debug.Trace
-import           Prelude        hiding ((<*>))
+import qualified Prelude
+import Universum hiding ((<*>))
+import Unsafe (unsafeHead, unsafeLast)
 
-import           Lib            (inverse)
+import Control.Lens (ix, (&))
+import Control.Monad (replicateM)
+import Data.Bifunctor (bimap)
+import Data.List (intercalate, (!!))
+import Data.Proxy (Proxy (..))
+
+import Lib (inverse)
 
 ----------------------------------------------------------------------------
 -- 2.29
@@ -229,10 +231,10 @@ instance Show a => Show (Poly a) where
 -- Removes zeroes from the beginning
 stripZ :: (Eq a, Ring a) => Poly a -> Poly a
 stripZ (Poly []) = Poly [f0]
-stripZ r@(Poly [a]) = r
+stripZ r@(Poly [_]) = r
 stripZ (Poly xs) =
     let l' = take (length xs - 1) xs
-    in Poly $ dropWhile (== f0) l' ++ [last xs]
+    in Poly $ dropWhile (== f0) l' ++ [unsafeLast xs]
 
 prettyPoly :: (Show a, Eq a, Ring a) => Poly a -> String
 prettyPoly (stripZ -> (Poly p)) =
@@ -292,13 +294,14 @@ instance WithTag a => Euclidian (Z a) where
             (Z . (`mod` getTag (Proxy :: Proxy (Z a))))
             (a `div` b, a `mod` b)
 
-assert bool str action
-    | not bool = error str
+assert :: Bool -> Text -> t -> t
+assert b str action
+    | not b = error str
     | otherwise = action
 
 -- | a / b = (quotient,remainder)
 euclPoly :: (Eq a, Field a) => Poly a -> Poly a -> (Poly a, Poly a)
-euclPoly (stripZ -> a@(Poly p1)) (stripZ -> b@(Poly p2)) =
+euclPoly (stripZ -> a) (stripZ -> b@(Poly p2)) =
     let res@(q,r) = euclPolyGo f0 a
     in assert ((b <*> q) <+> r == a) "EuclPoly assert failed" res
   where
@@ -325,7 +328,7 @@ gcdEucl a b =
        res
   where
     gcdEuclGo r0 r1 =
-        let (k,r) = r0 </> r1
+        let (_,r) = r0 </> r1
         in if r == f0 then r1 else gcdEuclGo r1 r
 
 {-
@@ -340,6 +343,7 @@ e235b = f0 <+> Poly [1, 1, fneg 2, 4, 1, 5]
 e235gcd :: forall a. (WithTag a) => Poly (Z a)
 e235gcd = gcdEucl e235a e235b
 
+e235 :: IO ()
 e235 = do
     putStrLn . prettyPoly $ e235gcd @Z2
     putStrLn . prettyPoly $ e235gcd @Z3
@@ -362,13 +366,13 @@ x^2 + 2x + 2
 -- Performance is terrible, but i don't want to re-implement
 -- extended euclidian algorithm. It actually freezes for Z > 4 lol.
 gcdUV :: forall a . (WithTag a) => Poly (Z a) -> Poly (Z a) -> (Poly (Z a), Poly (Z a))
-gcdUV a b = head $ filter (\(u,v) -> (u <*> a) <+> (v <*> b) == gcd) pairs
+gcdUV a b = unsafeHead $ filter (\(u,v) -> (u <*> a) <+> (v <*> b) == gcd') pairs
   where
     maxDeg = max (deg a) (deg b)
-    pairs = [(a,b) | a <- polys, b <- polys]
+    pairs = [(x,y) | x <- polys, y <- polys]
     polys = map ((<+> f0) . Poly) $ replicateM maxDeg allValues
     allValues = [0..getTag (Proxy :: Proxy (Z a))-1]
-    gcd = gcdEucl a b
+    gcd' = gcdEucl a b
 
 {-
 I did it manually, writing code is hard.
@@ -413,12 +417,13 @@ x^3 + x + 1 = (x^2 + a)(x + b). What a and b can be? Etc.
 
 
 e239check :: Poly (Z Z7) -> Bool
-e239check p = all (\k -> (p <^> k) `mod'` pr /= f1) divisors
+e239check p = all (\k -> (p <^> k) `mod'` pr /= f1) divs
   where
     pr = Poly [1,0,1 :: Z Z7]
     mod' a b = snd $ a </> b
-    divisors = filter (\b -> 48 `mod` b == 0) [1..24]
+    divs = filter (\b -> 48 `mod` b == 0) [1..24]
 
+e239 :: IO ()
 e239 = do
     print $ e239check $ Poly [5,2]
     print $ e239check $ Poly [1,2]

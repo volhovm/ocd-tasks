@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fno-warn-unused-top-binds #-}
+
 -- | Smooth numbers, sieves and relations for factorization
 
 module Module3v7 () where
@@ -7,7 +9,7 @@ import qualified Universum
 
 import Control.Lens (ix, makeLenses, uses, (%=))
 import qualified Data.Map.Strict as M
-import Data.Numbers.Primes (isPrime, primeFactors, primes)
+import Data.Numbers.Primes (isPrime, primeFactors)
 import qualified Data.Set as S
 
 ----------------------------------------------------------------------------
@@ -32,7 +34,7 @@ smoothPsi b x = fromIntegral $ length $ filter (bsmooth b) [2..x]
 bPowerSmooth :: Integer -> Integer -> Bool
 bPowerSmooth b x =
     let fact :: [(Integer,Int)]
-        fact = map (\l@(x:_) -> (x,length l)) $ group $ sort $ primeFactors x
+        fact = map (\l@(e:_) -> (e,length l)) $ group $ sort $ primeFactors x
     in all (\(p,n) -> p ^ n <= b) fact
 
 e328CounterArgument :: Integer -> [Integer]
@@ -93,7 +95,8 @@ bigL n = Universum.exp $ sqrt (log n) * sqrt(log (log n))
 bigL2 :: Integer -> Double
 bigL2 n = let x = (fromInteger n) * (log 2) in Universum.exp (sqrt $ x * log x)
 
-e329 = map (show . (/ (10^9)) . bigL2) [100,250,350,500,750,1000,2000]
+e329 :: [String]
+e329 = map (show . (/ (10^(9 :: Integer))) . bigL2) [100,250,350,500,750,1000,2000]
 
 {-
 Msec:

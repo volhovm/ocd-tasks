@@ -1,11 +1,11 @@
+{-# OPTIONS_GHC -fno-warn-unused-top-binds #-}
+
 module Module2v8 () where
 
 import Control.Monad (guard)
-import Data.Bifunctor (bimap)
-import Data.List (nub, sortBy)
+import Data.List (nub)
 import Data.Maybe (catMaybes, isJust)
 import Data.Numbers.Primes (primeFactors)
-import Data.Ord (comparing)
 import Debug.Trace
 import Prelude hiding (exp)
 
@@ -18,10 +18,10 @@ chinese :: [(Integer,Integer)] -> Integer
 chinese [] = error "chinese called with empty list"
 chinese xs | not (coprimes $ map snd xs) =
              error $ "not relative primes: " ++ show (map snd xs)
-chinese ((a₁,m₁):xs) = chineseGo xs (a₁ `mod` m₁) m₁
+chinese ((a₁,m₁):xs0) = chineseGo xs0 (a₁ `mod` m₁) m₁
   where
     chineseGo [] c _              = c
-    chineseGo x@((a, m):xs) c mprod =
+    chineseGo ((a, m):xs) c mprod =
         --trace ("x: " ++ show x) $
         --trace ("c: " ++ show c) $
         --trace ("mprod: " ++ show mprod) $
@@ -37,7 +37,7 @@ chinese ((a₁,m₁):xs) = chineseGo xs (a₁ `mod` m₁) m₁
 
 ------ 2.18
 
-
+e218 :: IO ()
 e218 = do
     print $ chinese [(3,7), (4,9)]
     print $ chinese [(137,423), (87,191)]
@@ -58,6 +58,7 @@ e218 = do
 ------ 2.19
 
 -- 23
+e219 :: Integer
 e219 = chinese [(2,3), (3,5), (2,7)]
 
 
@@ -73,6 +74,7 @@ sqrtP p a0 | p `mod` 4 /= 3 =
              case take 1 $ filter (\x -> exp p x 2 == a0 `mod` p) [0..p-1] of
                []  -> Nothing
                [a] -> Just a
+               _   -> error "sqrtP: can't happen"
 sqrtP p a0 = do
     --guard $ p + 1 `mod` 4 == 0
 --    traceShowM a
@@ -99,7 +101,7 @@ sqrtPN n a = do
     perms xs = perms' [[]] $ reverse xs
     perms' ys []     = ys
     perms' ys (x:xs) = perms' (map (x :) ys ++ map ((-x) :) ys) xs
-    chineseInput = map (\xs -> map (\(a, m) -> (a `mod` m, m)) $ xs `zip` ps) permutations
+    chineseInput = map (\xs -> map (\(a', m) -> (a' `mod` m, m)) $ xs `zip` ps) permutations
     chineseSolved = map chinese $ map nub chineseInput
 
 {-
@@ -129,6 +131,7 @@ So we have like only 2 distinct square roots --
 
 -- returns square root of a mod p^2 knowing b -- sqrt a mod p
 -- but not really
+e224b :: Integer -> Integer -> Integer -> Integer
 e224b p a b =
     traceShow m $
     traceShow check $
@@ -138,7 +141,7 @@ e224b p a b =
     mpp = (- m * p2) `mod` p2
     res = exp p2 (b + mpp) 2
     check = exp (p * p) res 2 == a `mod` p2
-    m = (b ^ 2) `div` p
+    m = (b ^ (2 :: Integer)) `div` p
 
 ------ 2.25
 

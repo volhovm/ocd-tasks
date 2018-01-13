@@ -1,7 +1,10 @@
+{-# OPTIONS_GHC -fno-warn-unused-top-binds #-}
+{-# OPTIONS_GHC -fno-warn-missing-signatures #-}
+
 module Module2v23 () where
 
-import           Lib     (exp, logD)
-import           Prelude hiding (exp)
+import Lib (exp, logD)
+import Prelude hiding (exp)
 
 ------ 2.3
 {-
@@ -65,7 +68,7 @@ e26_p = 1373
 e26_g = 2
 e26_a = logD e26_p e26_g e26_A -- 587
 e26_A = 974
-e26_b = 871
+e26_b = 871 :: Integer
 e26_B = exp e26_p e26_g e26_b           -- 805
 e26_secretBob = exp e26_p e26_A e26_b   -- 397
 e26_secretAlice = exp e26_p e26_B e26_a -- 397

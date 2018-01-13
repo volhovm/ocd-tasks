@@ -1,11 +1,13 @@
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# OPTIONS_GHC -fno-warn-unused-top-binds #-}
+
 module Module1v2 () where
 
-import           Control.Monad  (forM_, unless)
-import           Data.Bifunctor (bimap, second)
-import           Data.Bool      (bool)
-import           Data.Tuple     (swap)
-import           Prelude        hiding (gcd)
+import Control.Monad (forM_, unless)
+import Data.Bifunctor (bimap, second)
+import Data.Bool (bool)
+import Data.Tuple (swap)
+import Prelude hiding (gcd)
 
 gcd :: Int -> Int -> Int
 gcd a b = bool (gcd b r) b (q * b == a)

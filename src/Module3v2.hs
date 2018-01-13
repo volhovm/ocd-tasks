@@ -1,15 +1,16 @@
+{-# OPTIONS_GHC -fno-warn-unused-top-binds #-}
+{-# OPTIONS_GHC -fno-warn-missing-signatures #-}
+{-# OPTIONS_GHC -fno-warn-type-defaults #-}
+
 -- | RSA basics
 
 module Module3v2 () where
 
 import Universum hiding (exp)
-import Unsafe (unsafeHead)
 
-import qualified Data.HashSet as HS
-import Data.List (nub)
-import Data.Numbers.Primes (isPrime, primeFactors, primes)
+import Data.Numbers.Primes (primes)
 
-import Lib (crt, exp, inverse)
+import Lib (exp, inverse)
 
 data SecKeyRSA = SecKeyRSA
     { rsP :: Integer
@@ -133,16 +134,15 @@ Important notice: we should iterate over different a such that gcd(a,pq) = 1,
 factorizePQ :: Integer -> [(Integer, Integer)] -> (Integer,Integer)
 factorizePQ pq eds = (p,pq `div` p)
   where
-    hasDistinct xs = length (nub xs) > 1
     as = filter (\x -> gcd x pq == 1) [2..pq]
     solve a = do
         let roots = map (\(e,d) -> exp pq a $ (e * d - 1) `div` 2) eds
-        let choices2 = map (\xs -> let [a,b] = take 2 xs in (a,b))
+        let choices2 = map (\xs -> let [x,y] = take 2 xs in (x,y))
                            (permutations roots)
             sols = concatMap (\(x,y) -> [gcd pq (x - y), gcd pq (x + y)]) choices2
             porq = find (\x -> x /= 1 && pq `div` x /= 1 && x /= pq) sols
         (a,) <$> porq
-    (a,p) =
+    (_,p) =
         fromMaybe (error "factorizePQ: can't compute roots") $
         head $ mapMaybe solve as
 

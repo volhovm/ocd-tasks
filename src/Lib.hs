@@ -25,13 +25,11 @@ import Universum hiding (exp)
 import Unsafe (unsafeHead)
 
 import Control.Exception.Base (assert)
-import Control.Monad (forM_, when)
 import Data.Bifunctor (bimap)
 import Data.List (nub, sortBy)
 import Data.Maybe (fromMaybe, isNothing)
 import Data.Numbers.Primes (isPrime, primeFactors)
 import Data.Ord (comparing)
-import Debug.Trace
 
 -- | For a,b returns (gcd,u,v) such that au + bv = gcd.
 exEucl :: (Integral n) => n -> n -> (n, n, n)
@@ -69,7 +67,7 @@ exp p g n
     | otherwise = power g n
   where
     pI = toInteger p
-    power a 0 = 0
+    power _ 0 = 0
     power a 1 = a `mod` p
     power a b = do
         let (bdiv,bmod) = b `divMod` 2
@@ -120,11 +118,9 @@ logDShank p g h
     | otherwise = collisionGo list1 list2
   where
     ml a b = (a * b) `mod` p
-    getN 1 m  = m
-    getN g' m = getN (g' `ml` g) (m + 1)
     _N0 = order p g
     _N = fromMaybe (error "shank called with bad g") _N0
-    n = 1 + floor (sqrt $ fromIntegral _N)
+    n = 1 + floor (sqrt (fromIntegral _N) :: Double)
     list1 =
         sortBy (comparing fst) $
         take (fromIntegral $ n + 1) $ iterate (bimap (ml g) (+ 1)) (1, 0)
@@ -147,10 +143,10 @@ crt :: [(Integer,Integer)] -> Integer
 crt [] = error "chinese called with empty list"
 crt xs | not (coprimes $ map snd xs) =
              error $ "not relative primes: " <> show (map snd xs)
-crt ((a₁,m₁):xs) = chineseGo xs (a₁ `mod` m₁) m₁
+crt ((a₁,m₁):xs0) = chineseGo xs0 (a₁ `mod` m₁) m₁
   where
     chineseGo [] c _              = c
-    chineseGo x@((a, m):xs) c mprod =
+    chineseGo ((a, m):xs) c mprod =
         chineseGo xs c' (mprod * m)
         where
           m' = inverse mprod m
@@ -175,11 +171,13 @@ isSquareRoot a0 b0 = go a0 b0
         | (a `mod` b) == b-1 = case b `mod` 4 of
             1 -> 1
             3 -> -1
+            _ -> error "isSquareRoot: can't happen (1)"
         | (a `mod` b) == 2 = case b `mod` 8 of
             1 -> 1
             7 -> 1
             3 -> -1
             5 -> -1
+            _ -> error "isSquareRoot: can't happen (2)"
         | even a = go 2 b * go (a `div` 2) b
         | otherwise = case (a `mod` 4, b `mod` 4) of
             (3,3) -> go (-1) a * go (b `mod` a) a

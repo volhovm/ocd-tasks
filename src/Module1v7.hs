@@ -1,12 +1,13 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -fno-warn-unused-top-binds #-}
 
 module Module1v7 () where
 
-import qualified Data.ByteString     as BS
-import           Data.Numbers.Primes (isPrime, primeFactors, primes)
-import           Data.Word           (Word8)
-import           Prelude
+import qualified Data.ByteString as BS
+import Data.Numbers.Primes (primeFactors)
+import Data.Word (Word8)
+import Prelude
 
 ------ 1.42
 badday :: [Word8]
@@ -15,9 +16,9 @@ badday = BS.unpack "Bad day, Dad."
 ------ 1.43 (a)
 
 inverse :: Int -> Int -> Int
-inverse a p = a `power` (p-2)
+inverse a0 p = a0 `power` (p-2)
   where
-    power a 0 = 0
+    power _ 0 = 0
     power a 1 = a `mod` p
     power a b = ((power a (b-1)) `mod` p) * a `mod` p
 
@@ -203,6 +204,8 @@ e149_b = decryptAlpha 8 23 78183903
 
 ------ 1.50
 
+e150_gcd :: Integer
 e150_gcd = gcd 12849217045006222 6485880443666222
 
+factors :: [Integer]
 factors = primeFactors e150_gcd -- result [2,87192883], so k = 87192883

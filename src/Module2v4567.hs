@@ -1,14 +1,17 @@
+{-# OPTIONS_GHC -fno-warn-unused-top-binds #-}
+{-# OPTIONS_GHC -fno-warn-missing-signatures #-}
+
 module Module2v4567 () where
 
-import           Control.Monad       (forM_, unless)
-import           Data.Bifunctor      (bimap)
-import           Data.List           (sortBy)
-import           Data.Numbers.Primes (primes)
-import           Data.Ord            (comparing)
-import           Debug.Trace
-import           Prelude             hiding (exp)
+import Prelude hiding (exp)
 
-import           Lib                 (exp, inverse, logDTrialAndError)
+import Control.Monad (forM_, unless)
+import Data.Bifunctor (bimap)
+import Data.List (sortBy)
+import Data.Numbers.Primes (primes)
+import Data.Ord (comparing)
+
+import Lib (exp, inverse, logDTrialAndError)
 
 ------ 2.8 Elgamal general
 
@@ -23,18 +26,17 @@ elgamalEnc p g pubA k m = (c₁, c₂)
     c₁ = exp p g k
     c₂ = (m * exp p pubA k) `mod` p
 
-elgamalDec p g a (c₁,c₂) = (x * c₂) `mod` p
+elgamalDec p a (c₁,c₂) = (x * c₂) `mod` p
   where
     x = inverse (exp p c₁ a) p
-    pubA = exp p g a
 
 -- (b)
-e28b = 716
+e28b = 716 :: Integer
 e28B = exp e28p e28g e28b
 e28c = elgamalEnc e28p e28g e28B 877 583 -- (719,623)
 
 -- (c)
-e28m = elgamalDec e28p e28g 299 (661, 1325) -- 332
+e28m = elgamalDec e28p 299 (661, 1325) -- 332
 
 -- (d)
 
@@ -43,7 +45,7 @@ e28Eve = m
     pubB = 893
     c = (693, 793)
     b = logDTrialAndError e28p e28g pubB
-    m = elgamalDec e28p e28g b c
+    m = elgamalDec e28p b c
 
 ------ 2.9 Making use of DH problem to break Elgamal
 {-
@@ -69,7 +71,7 @@ shank p g h = collisionGo list1 list2
     getN 1 m  = m
     getN g' m = getN (g' `ml` g) (m + 1)
     _N = getN g 1
-    n = 1 + floor (sqrt $ fromIntegral _N)
+    n = 1 + floor (sqrt $ fromIntegral _N :: Double)
     list1 =
         sortBy (comparing fst) $
         take (n + 1) $ iterate (bimap (ml g) (+ 1)) (1, 0)

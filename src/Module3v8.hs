@@ -1,15 +1,15 @@
+{-# OPTIONS_GHC -fno-warn-unused-top-binds #-}
+
 -- | Index calculus method for solving DLP in F_p
 
 module Module3v8 () where
 
 import Universum hiding (exp)
-import Unsafe (unsafeHead)
+import Unsafe (unsafeHead, unsafeLast)
 
-import Control.Lens (at, ix, uses, (%=), (.=))
-import Data.List (last, (!!))
-import qualified Data.Map.Strict as M
-import Data.Numbers.Primes (isPrime, primeFactors, primes)
-import qualified Data.Set as S
+import Control.Lens (ix, (%=))
+import Data.List ((!!))
+import Data.Numbers.Primes (primeFactors, primes)
 import qualified Data.Text as T
 import System.Random (randomRIO)
 
@@ -36,7 +36,6 @@ gaussSolve p matrix = do
 
     sub a b = (a - b) `mod` p
     mul a b = (a * b) `mod` p
-    add a b = (a + b) `mod` p
 
     diagonal1 :: State [[Integer]] ()
     diagonal1 = forM_ [0..(n-1)] $ \(i::Int) -> do
@@ -107,15 +106,13 @@ e336 = do
     let p = 19079
     let g = 17
     let b = 5
-    let primeBase = takeWhile (<= b) primes
     let ixs = [3030, 6892, 18312]
     let k = 12400
     -- (a)
     print $ all (\i -> bsmooth b $ exp p g i) ixs
-    let curLog = logD p g
     let m = [[2,6,1,3030],[11,2,0,6892],[4,1,3,18312]]
-    sols1 <- map last <$> gaussSolve 9539 m
-    sols2 <- map last <$> gaussSolve 2 m
+    sols1 <- map unsafeLast <$> gaussSolve 9539 m
+    sols2 <- map unsafeLast <$> gaussSolve 2 m
     print sols1
     print sols2
     -- [8195,1299,7463]

@@ -1,7 +1,9 @@
+{-# OPTIONS_GHC -fno-warn-unused-top-binds #-}
+
 module Module1v1 () where
 
-import           Data.Char (digitToInt, isAlpha, toLower, toUpper)
-import           Prelude
+import Data.Char (isAlpha, toLower, toUpper)
+import Prelude
 
 upperL, lowerL :: Int
 upperL = 65

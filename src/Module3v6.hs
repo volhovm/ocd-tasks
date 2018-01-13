@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fno-warn-unused-top-binds #-}
+
 -- | Factorization via difference of primes
 
 module Module3v6 () where
@@ -8,7 +10,7 @@ import Unsafe (unsafeHead)
 import Control.Lens (at)
 import Data.List (findIndex)
 import qualified Data.Map as M
-import Data.Numbers.Primes (isPrime, primeFactors, primes)
+import Data.Numbers.Primes (isPrime, primes)
 
 import Lib
 
@@ -18,8 +20,8 @@ import Lib
 
 perfectSquare :: Integer -> Maybe Integer
 perfectSquare x =
-    let y = truncate $ sqrt (fromIntegral x)
-    in if y ^ 2 == x
+    let y = truncate (sqrt (fromIntegral x) :: Double)
+    in if y * y == x
        then Just y
        else Nothing
 
@@ -28,8 +30,8 @@ e324 n = (a-b, a+b)
   where
     (a,b) =
         unsafeHead $
-        mapMaybe (\b -> let a2 = n + b^2
-                        in (,b) <$> perfectSquare a2) [1..n-1]
+        mapMaybe (\b' -> let a2 = n + b'*b'
+                        in (,b') <$> perfectSquare a2) [1..n-1]
 
 {-
 λ> e324 53357
@@ -47,7 +49,7 @@ e324 n = (a-b, a+b)
 ----------------------------------------------------------------------------
 
 e325 :: Integer -> Integer -> Integer -> (Integer,Integer)
-e325 n k b0 = unsafeHead $ mapMaybe verifyAb abs
+e325 n k b0 = unsafeHead $ mapMaybe verifyAb abs'
   where
     verifyAb (a,b) = do
         let x = a+b
@@ -56,7 +58,7 @@ e325 n k b0 = unsafeHead $ mapMaybe verifyAb abs
         let g2 = gcd n y
         guard $ not $ any (\g -> g == n || g == 1) [g1,g2]
         pure (g1,g2)
-    abs = mapMaybe (\b -> let a2 = k * n + b^2
+    abs' = mapMaybe (\b -> let a2 = k * n + b*b
                           in (,b) <$> perfectSquare a2) [b0..n]
 
 {-
@@ -89,7 +91,7 @@ allCombinations xs = concatMap (flip combinations xs) [1..(toInteger $ length xs
 -- λ> pNumber 2
 -- 0
 pNumber :: (Integral n, Integral m) => n -> m
-pNumber p | not (isPrime $ fromIntegral p) = error "pNumber"
+pNumber p | not (isPrime (fromIntegral p :: Integer)) = error "pNumber"
           | otherwise = fromIntegral $ fromMaybe (error "pNumber2") $ findIndex (== p) primes
 
 e326 :: Integer -> [(Integer,[(Integer,Integer)])] -> (Integer,Integer)
@@ -102,8 +104,6 @@ e326 n hints =
   where
     mulMany = foldr1 (\x y -> (x * y) `mod` n)
     combinedHints = do
-        let maxHintsP = maximum $ map (\(_,ps) -> maximum $ map fst ps) hints
-        let vecLen = pNumber maxHintsP
         let toValidCombination :: [[(Integer,Integer)]] -> Maybe Integer
             toValidCombination [] = Nothing
             toValidCombination (concat -> xs) = do

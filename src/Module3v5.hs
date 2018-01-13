@@ -1,10 +1,13 @@
+{-# OPTIONS_GHC -fno-warn-unused-top-binds #-}
+
 -- | Pollard's p-1 algorithm
 
 module Module3v5 () where
 
 import Universum hiding (exp)
 
-import Data.Numbers.Primes (isPrime, primeFactors, primes)
+import Data.Numbers.Primes (isPrime)
+
 import Lib (exp)
 
 ----------------------------------------------------------------------------
@@ -37,7 +40,7 @@ js were: 6, 8, 19
 ----------------------------------------------------------------------------
 
 mersennePrimes :: [Integer]
-mersennePrimes = filter isPrime $ map (\x -> 2^x - 1) [2..]
+mersennePrimes = filter isPrime $ map (\x -> 2^x - 1) [(2::Integer)..]
 
 {-
 a,b)

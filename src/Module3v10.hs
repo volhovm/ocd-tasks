@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fno-warn-unused-top-binds #-}
+
 -- | Probabilistic encryption, Goldwasser-Micali cryptosystem.
 
 module Module3v10 () where
@@ -6,10 +8,10 @@ import Universum hiding (exp)
 import Unsafe (unsafeHead)
 
 import Data.List ((!!))
-import Data.Numbers.Primes (isPrime, primeFactors, primes)
+import Data.Numbers.Primes (primeFactors, primes)
 import System.Random (randomIO, randomRIO)
 
-import Lib (exp, isSquareRoot)
+import Lib (isSquareRoot)
 
 ----------------------------------------------------------------------------
 -- Cryptosystem
@@ -27,16 +29,16 @@ data GMSk = GMSk
     } deriving Show
 
 suchThat :: (Monad m) => m a -> (a -> Bool) -> m a
-suchThat action pred = do
+suchThat action predicate = do
     x <- action
-    if pred x then pure x else action `suchThat` pred
+    if predicate x then pure x else action `suchThat` predicate
 
 genPair :: IO (GMSk, GMPk)
 genPair = do
-    pi <- randomRIO (1000,2000)
-    qi <- randomRIO (2000,3000)
-    let p = primes !! pi
-    let q = primes !! qi
+    pi' <- randomRIO (1000,2000)
+    qi' <- randomRIO (2000,3000)
+    let p = primes !! pi'
+    let q = primes !! qi'
     let n = p * q
     let notsqr a b = (== -1) $ isSquareRoot a b
     a <- randomRIO (1,n) `suchThat` (\a -> notsqr a p && notsqr a q)
@@ -55,7 +57,7 @@ decryptGM GMSk {..} c =
     case isSquareRoot c gmP of
         (-1) -> True
         1    -> False
-        0    -> error "decryptGM: malformed c"
+        _    -> error "decryptGM: malformed c"
 
 verifyGM :: IO ()
 verifyGM = do
