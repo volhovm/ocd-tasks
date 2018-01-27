@@ -6,8 +6,8 @@ module Module4 () where
 
 import Universum hiding (exp)
 
-import Data.List ((!!))
-import Data.Numbers.Primes (primes)
+import Data.List (nub, (!!))
+import Data.Numbers.Primes (primeFactors, primes)
 import System.Random (randomRIO)
 
 import Lib (exp, inverse)
@@ -82,4 +82,42 @@ e41 = do
 628622
 75562
 RdsSignature 227023
+-}
+
+----------------------------------------------------------------------------
+-- 4.2
+----------------------------------------------------------------------------
+
+e42 :: IO ()
+e42 =
+    mapM_
+        (print .
+         uncurry (rdsValidate (RdsPk 1562501 87953)) . second RdsSignature)
+        [(119812,876453),(161153,870099),(586036,602754)]
+
+{-
+λ> e42
+False
+True
+True
+-}
+
+----------------------------------------------------------------------------
+-- 4.3
+----------------------------------------------------------------------------
+
+breakRsa :: RdsPk -> RdsSk
+breakRsa RdsPk {..} =
+    let [rsP, rsQ] = nub $ primeFactors rpN
+    in RdsSk rsP rsQ rpE (inverse rpE ((rsP-1)*(rsQ-1)))
+
+e43 :: IO ()
+e43 = do
+    let sk = breakRsa (RdsPk 27212325191 22824469379)
+    let d = 12910258780
+    print $ rdsSign sk d
+
+{-
+λ> e43
+RdsSignature 22054770669
 -}
