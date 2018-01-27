@@ -55,8 +55,8 @@ encryptGM GMPk{..} m = do
 decryptGM :: GMSk -> Integer -> Bool
 decryptGM GMSk {..} c =
     case isSquareRoot c gmP of
-        (-1) -> True
         1    -> False
+        (-1) -> True
         _    -> error "decryptGM: malformed c"
 
 verifyGM :: IO ()
