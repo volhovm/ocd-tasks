@@ -121,3 +121,27 @@ e43 = do
 λ> e43
 RdsSignature 22054770669
 -}
+
+----------------------------------------------------------------------------
+-- 4.4
+----------------------------------------------------------------------------
+
+{-
+Well, it _obviously_ works, because it's just a composition of two primitives.
+
+Regarding security, it's a hard task to show that it is hard to break,
+though we can reason in this way:
+
+* It's impossible to get Hash(m) without knowing m, safety of which is
+  guaranteed by RSA PSK. RSA DS doesn't disclose m as well, because
+  Hash(m)^e has two levels of security: it's hard to get Hash(m)
+  (would require knowing d, which would break RSA PKC), it's also hard
+  to reverse hash.
+
+* It's thus impossible to forge Hash(m).
+
+-}
+
+----------------------------------------------------------------------------
+-- Discrete Logarithm DS
+----------------------------------------------------------------------------
