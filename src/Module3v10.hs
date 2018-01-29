@@ -11,7 +11,7 @@ import Data.List ((!!))
 import Data.Numbers.Primes (primeFactors, primes)
 import System.Random (randomIO, randomRIO)
 
-import Lib (isSquareRoot)
+import Lib (isSquareRoot, suchThat)
 
 ----------------------------------------------------------------------------
 -- Cryptosystem
@@ -27,11 +27,6 @@ data GMPk = GMPk
 data GMSk = GMSk
     { gmP  :: Integer -- ^ p dividing N
     } deriving Show
-
-suchThat :: (Monad m) => m a -> (a -> Bool) -> m a
-suchThat action predicate = do
-    x <- action
-    if predicate x then pure x else action `suchThat` predicate
 
 genPair :: IO (GMSk, GMPk)
 genPair = do

@@ -19,6 +19,7 @@ module Lib
        , bsmooth
        , generator
        , isSquareRoot
+       , suchThat
        ) where
 
 import Universum hiding (exp)
@@ -182,3 +183,8 @@ isSquareRoot a0 b0 = go a0 b0
         | otherwise = case (a `mod` 4, b `mod` 4) of
             (3,3) -> go (-1) a * go (b `mod` a) a
             _     -> go (b `mod` a) a
+
+suchThat :: (Monad m) => m a -> (a -> Bool) -> m a
+suchThat action predicate = do
+   x <- action
+   if predicate x then pure x else action `suchThat` predicate

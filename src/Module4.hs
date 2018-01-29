@@ -10,7 +10,7 @@ import Data.List (nub, (!!))
 import Data.Numbers.Primes (primeFactors, primes)
 import System.Random (randomRIO)
 
-import Lib (exp, inverse)
+import Lib (exp, inverse, suchThat)
 
 ----------------------------------------------------------------------------
 -- RSA Digital Signatures
@@ -48,11 +48,6 @@ rdsKeyGen = do
     let sk = RdsSk{..}
     let pk = rdsToPublic sk
     pure (sk,pk)
-  where
-    suchThat :: (Monad m) => m a -> (a -> Bool) -> m a
-    suchThat action predicate = do
-        x <- action
-        if predicate x then pure x else action `suchThat` predicate
 
 rdsSign :: RdsSk -> Integer -> RdsSignature
 rdsSign rs@RdsSk{..} v = RdsSignature $ exp n (v `mod` n) rsD
@@ -143,5 +138,88 @@ though we can reason in this way:
 -}
 
 ----------------------------------------------------------------------------
--- Discrete Logarithm DS
+-- Elgamal signature scheme
 ----------------------------------------------------------------------------
+
+data ElgamalSetup = ElgamalSetup { eP :: Integer, eG :: Integer } deriving Show
+data ElgamalPk = ElgamalPk { epS :: ElgamalSetup, epA :: Integer } deriving Show
+data ElgamalSk = ElgamalSk { esS :: ElgamalSetup, esA :: Integer } deriving Show
+data ElgamalSig = ElgamalSig { s1 :: Integer, s2 :: Integer } deriving Show
+
+elgamalToPublic :: ElgamalSk -> ElgamalPk
+elgamalToPublic ElgamalSk{..} = ElgamalPk esS (exp (eP esS) (eG esS) esA)
+
+elgamalSignRaw :: ElgamalSk -> Integer -> Integer -> ElgamalSig
+elgamalSignRaw ElgamalSk{..} d k = ElgamalSig{..}
+  where
+    s1 = exp eP eG k `mod` eP
+    s2 = ((d - esA * s1) * (inverse k (eP-1))) `mod` eP
+    ElgamalSetup{..} = esS
+
+elgamalSign :: ElgamalSk -> Integer -> IO ElgamalSig
+elgamalSign sk d =
+    fmap (elgamalSignRaw sk d) $
+    randomRIO (10, eP (esS sk) - 2) `suchThat` (\k -> gcd k (eP $ esS sk) == 1)
+
+elgamalVerify :: ElgamalPk -> Integer -> ElgamalSig -> Bool
+elgamalVerify pk d ElgamalSig{..} =
+    ((exp eP (epA pk) s1 * exp eP s1 s2) `mod` eP) == exp eP eG d
+  where
+    ElgamalSetup{..} = epS pk
+
+----------------------------------------------------------------------------
+-- 4.5
+----------------------------------------------------------------------------
+
+e45 :: IO ()
+e45 = do
+    let setup = ElgamalSetup 6961 437
+    let sk = ElgamalSk setup 6104
+    let pk = elgamalToPublic sk
+    print pk
+    print $ elgamalSignRaw sk 5584 4451
+{-
+λ> e45
+ElgamalPk {epS = ElgamalSetup {eP = 6961, eG = 437}, epA = 2065}
+ElgamalSig {s1 = 3534, s2 = 2821}
+-}
+
+----------------------------------------------------------------------------
+-- 4.6
+----------------------------------------------------------------------------
+
+e46 :: IO ()
+e46 = do
+    let setup = ElgamalSetup 6961 437
+    let pk = ElgamalPk setup 4250
+    mapM_ (print . uncurry (elgamalVerify pk))
+        [ (1521, ElgamalSig 4129 5575)
+        , (1837, ElgamalSig 3145 1871)
+        , (1614, ElgamalSig 2709 2994)
+        ]
+
+{-
+λ> e46
+True
+False
+True
+-}
+
+{-
+
+data ElgamalPk = ElgamalPk { eP :: Integer, eQ :: Integer, eG :: Integer }
+data ElgamalSk = ElgamalSk { ePk :: ElgamalPk, eA :: Integer }
+data ElgamalSig = ElgamalSig { s1 :: Integer, s2 :: Integer }
+
+elgamalSignRaw :: ElgamalSk -> Integer -> Integer -> ElgamalSig
+elgamalSignRaw ElgamalSk{..} d k = ElgamalSig{..}
+  where
+    s1 = exp eP eG k `mod` eQ
+    s2 = ((d + eA * s1) * (inverseP k eQ)) `mod` eQ
+    ElgamalPk{..} = ePk
+
+elgamalSign :: ElgamalSk -> Integer -> IO ElgamalSig
+elgamalSign sk d = elgamalSignRaw sk d <$> randomRIO (10, eQ (ePk sk) - 1)
+
+
+-}
