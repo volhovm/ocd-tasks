@@ -10,7 +10,7 @@ import Data.List (nub, (!!))
 import Data.Numbers.Primes (primeFactors, primes)
 import System.Random (randomRIO)
 
-import Lib (exp, inverse, suchThat)
+import Lib (exp, inverse, inverseP, logDShank, suchThat)
 
 ----------------------------------------------------------------------------
 -- RSA Digital Signatures
@@ -63,7 +63,7 @@ rdsValidate RdsPk{..} d (RdsSignature sig) = exp rpN sig rpE == d
 
 e41 :: IO ()
 e41 = do
-    let rsP = 514
+    let rsP = 541
     let rsQ = 1223
     let rsE = 159853
     let rsD = inverse ((rsP - 1) * (rsQ - 1)) rsE
@@ -74,9 +74,9 @@ e41 = do
 
 {-
 λ> e41
-628622
-75562
-RdsSignature 227023
+661643
+23828
+RdsSignature 123518
 -}
 
 ----------------------------------------------------------------------------
@@ -141,10 +141,10 @@ though we can reason in this way:
 -- Elgamal signature scheme
 ----------------------------------------------------------------------------
 
-data ElgamalSetup = ElgamalSetup { eP :: Integer, eG :: Integer } deriving Show
-data ElgamalPk = ElgamalPk { epS :: ElgamalSetup, epA :: Integer } deriving Show
-data ElgamalSk = ElgamalSk { esS :: ElgamalSetup, esA :: Integer } deriving Show
-data ElgamalSig = ElgamalSig { s1 :: Integer, s2 :: Integer } deriving Show
+data ElgamalSetup = ElgamalSetup { eP :: Integer, eG :: Integer } deriving (Show,Eq)
+data ElgamalPk = ElgamalPk { epS :: ElgamalSetup, epA :: Integer } deriving (Show,Eq)
+data ElgamalSk = ElgamalSk { esS :: ElgamalSetup, esA :: Integer } deriving (Show,Eq)
+data ElgamalSig = ElgamalSig { s1 :: Integer, s2 :: Integer } deriving (Show,Eq)
 
 elgamalToPublic :: ElgamalSk -> ElgamalPk
 elgamalToPublic ElgamalSk{..} = ElgamalPk esS (exp (eP esS) (eG esS) esA)
@@ -153,7 +153,7 @@ elgamalSignRaw :: ElgamalSk -> Integer -> Integer -> ElgamalSig
 elgamalSignRaw ElgamalSk{..} d k = ElgamalSig{..}
   where
     s1 = exp eP eG k `mod` eP
-    s2 = ((d - esA * s1) * (inverse k (eP-1))) `mod` eP
+    s2 = ((d - esA * s1) * (inverse k (eP-1))) `mod` (eP - 1)
     ElgamalSetup{..} = esS
 
 elgamalSign :: ElgamalSk -> Integer -> IO ElgamalSig
@@ -181,7 +181,7 @@ e45 = do
 {-
 λ> e45
 ElgamalPk {epS = ElgamalSetup {eP = 6961, eG = 437}, epA = 2065}
-ElgamalSig {s1 = 3534, s2 = 2821}
+ElgamalSig {s1 = 3534, s2 = 5888}
 -}
 
 ----------------------------------------------------------------------------
@@ -205,21 +205,148 @@ False
 True
 -}
 
+----------------------------------------------------------------------------
+-- 4.7
+----------------------------------------------------------------------------
+
 {-
+A^{S1} * S1^S2 =
+  = A^{S1} * A^(S2*j) * g^(S2*i)
+  = A^{S1 + j*(- j^(-1)*S1)} * g^(S2*i)
+  = g^(S2*i)
+  = g^(-S1*i/j) = g^D
+-}
 
-data ElgamalPk = ElgamalPk { eP :: Integer, eQ :: Integer, eG :: Integer }
-data ElgamalSk = ElgamalSk { ePk :: ElgamalPk, eA :: Integer }
-data ElgamalSig = ElgamalSig { s1 :: Integer, s2 :: Integer }
+----------------------------------------------------------------------------
+-- 4.8
+----------------------------------------------------------------------------
 
-elgamalSignRaw :: ElgamalSk -> Integer -> Integer -> ElgamalSig
-elgamalSignRaw ElgamalSk{..} d k = ElgamalSig{..}
+recoverElgamal :: ElgamalPk -> (Integer, ElgamalSig) -> (Integer,ElgamalSig) -> Maybe ElgamalSk
+recoverElgamal pk (d1,(ElgamalSig s1 s2)) (d2,(ElgamalSig _ s2')) = do
+    guard $ exp eP eG k == s1
+    guard $ elgamalToPublic sk == pk
+    pure sk
   where
-    s1 = exp eP eG k `mod` eQ
-    s2 = ((d + eA * s1) * (inverseP k eQ)) `mod` eQ
-    ElgamalPk{..} = ePk
+    sk = ElgamalSk (epS pk) a
+    ElgamalSetup{..} = epS pk
+    -- solves `x*s = y mod r` for s
+    solve x y =
+        if gcd x r == 1
+        then (y * inverse x r) `mod` r
+        else fromMaybe (error "recoverElg: must exist") $
+             find (\s -> (s * x) `mod` r == y) [1..r `div` (gcd x r)]
+    a = solve s1 $ (d1 - (k * s2) `mod` r) `mod` r
+    k = solve sdiff ddiff
+    ddiff = (d1 - d2) `mod` r
+    sdiff = (s2 - s2') `mod` r
+    r = eP - 1
 
-elgamalSign :: ElgamalSk -> Integer -> IO ElgamalSig
-elgamalSign sk d = elgamalSignRaw sk d <$> randomRIO (10, eQ (ePk sk) - 1)
+e48 :: Maybe ElgamalSk
+e48 =
+    recoverElgamal
+        (ElgamalPk (ElgamalSetup 348149 113459) 185149)
+        (153405, ElgamalSig 208913 209176)
+        (127561, ElgamalSig 208913 217800)
+
+{-
+(a) S1 will be the same, because S1 = g^k.
+(b) We need to solve the following system:
+
+k*s2 + a*s1 = d
+k*s2' + a*s1' = d'
+
+All operations are done modulo p-1. It's trivial to do, except for
+the taking inverse moment: sometimes solving ax = b (mod p-1)
+can't be solved by taking a^-1, so we need to do trial and error.
+
+(c) Just (ElgamalSk {esS = ElgamalSetup {eP = 348149, eG = 113459}, esA = 72729})
+-}
 
 
+----------------------------------------------------------------------------
+-- DSA
+----------------------------------------------------------------------------
+
+data DsaSetup = DsaSetup { dP :: Integer, dQ :: Integer, dG :: Integer } deriving (Show,Eq)
+data DsaPk = DsaPk { dpS :: DsaSetup, dpA :: Integer } deriving (Show,Eq)
+data DsaSk = DsaSk { dsS :: DsaSetup, dsA :: Integer } deriving (Show,Eq)
+data DsaSig = DsaSig { ds1 :: Integer, ds2 :: Integer } deriving (Show,Eq)
+
+dsaToPublic :: DsaSk -> DsaPk
+dsaToPublic DsaSk{..} = DsaPk dsS (exp (dP dsS) (dG dsS) dsA)
+
+dsaSignRaw :: DsaSk -> Integer -> Integer -> DsaSig
+dsaSignRaw DsaSk{..} d k = DsaSig{..}
+  where
+    ds1 = exp dP dG k `mod` dQ
+    ds2 = ((d + dsA * ds1) * (inverseP k dQ)) `mod` dQ
+    DsaSetup{..} = dsS
+
+dsaSign :: DsaSk -> Integer -> IO DsaSig
+dsaSign sk d = dsaSignRaw sk d <$> randomRIO (10, dQ (dsS sk) - 1)
+
+dsaVerify :: DsaPk -> Integer -> DsaSig -> Bool
+dsaVerify DsaPk{..} d DsaSig{..} =
+    ((exp dP dG v1 * exp dP dpA v2) `mod` dP) `mod` dQ == ds1
+  where
+    DsaSetup{..} = dpS
+    v1 = (d * inverseP ds2 dQ) `mod` dQ
+    v2 = (ds1 * inverseP ds2 dQ) `mod` dQ
+
+----------------------------------------------------------------------------
+-- 4.9
+----------------------------------------------------------------------------
+
+e49 :: IO ()
+e49 = do
+    let setup = DsaSetup 22531 751 4488
+    let sk = DsaSk setup 674
+    let pk = dsaToPublic sk
+    print pk
+    print $ dsaSignRaw sk 244 574
+
+    x <- dsaSign sk 123
+    print x
+    print $ dsaVerify pk 123 x
+
+
+{-
+λ> e49
+DsaPk {dpS = DsaSetup {dP = 22531, dQ = 751, dG = 4488}, dpA = 4940}
+DsaSig {ds1 = 444, ds2 = 56}
+-}
+
+----------------------------------------------------------------------------
+-- 4.10
+----------------------------------------------------------------------------
+
+e410 :: IO ()
+e410 = do
+    let setup = DsaSetup 22531 751 4488
+    let pk = DsaPk setup 22476
+    mapM_ (print . uncurry (dsaVerify pk)) $ [(329, DsaSig 183 260), (432, DsaSig 211 97)]
+
+{-
+λ> e410
+True
+False
+-}
+
+----------------------------------------------------------------------------
+-- 4.11
+----------------------------------------------------------------------------
+
+collisionDsa :: DsaPk -> DsaSk
+collisionDsa DsaPk{..} = let DsaSetup{..} = dpS in DsaSk dpS (logDShank dP dG dpA)
+
+e411 :: IO ()
+e411 = do
+    let setup = DsaSetup 103687 1571 21947
+    let pk = DsaPk setup 31377
+    let sk = collisionDsa pk
+    print $ dsaSignRaw sk 510 1105
+
+{-
+λ> e411
+DsaSig {ds1 = 439, ds2 = 1259}
 -}
