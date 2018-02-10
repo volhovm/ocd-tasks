@@ -35,7 +35,7 @@ library
                      , Module4
 
                      , Module5v1
-  build-depends:       base >=4.9 && <4.10
+  build-depends:       base >=4.9 && <4.11
                      , bytestring >=0.10
                      , containers >= 0.5.7.1
                      , easyplot >= 1.0
