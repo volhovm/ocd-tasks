@@ -38,16 +38,7 @@ A = pen, B = pencil, U_i = urn#i.
 
 (a) P(B) = 1/2 * (7/10 + 4/12) = 31/60 = 0.516
 (b) p(U1|B) = P(A|U1)*P(U1)/P(B) = (7/10) * (1/2) / (31/60) = 21/31 = 0.678
-(c) p(B)^2 = 0.267
--}
-
-----------------------------------------------------------------------------
--- 5.25
-----------------------------------------------------------------------------
-
-{-
-(a) 1/3
-(b) p(sssssg) = (2/3)^5 * 1/3 = 0.0439
+(c) 1/2 * (7/10) * (6/9) + 1/2 * (4/12) * (3/11) = 0.278
 -}
 
 ----------------------------------------------------------------------------
@@ -97,11 +88,10 @@ In both cases P(A) = m/n (guess the car), P(A^c) = 1 - m/n = (n-m)/n (not guess 
 
 Scenario 1 (stick):
 P(B|A) = 1
-P(B|A^c) = m/(n-k-1) :
+P(B|A^c) = 0
 guess m cars from n-k-1 places (still open, that are not the chosen one) left.
 
-Then P(B) = 1*m/n + m/(n-k-1)*(n-m)/n
-          = m(2n - m - k - 1)/(n(n-k-1))
+Then P(B) = 1*m/n + 0*(n-m)/n = m/n = P(A)
 
 Scenario 2 (switch):
 
@@ -116,12 +106,10 @@ P(B) = (m-1)/(n-k-1)*m/n + m/(n-k-1)*(n-m)/n
 
 The difference (n-k-1 is positive):
 
-δ = P(B)_switch - P(B)_stick =
-  (n - 1 - 2n + m + k + 1) = m + k - n
+δ = P(B)_switch - P(B)_stick = m k / (n (n-k-1))
 
-If k = n-2, m = 1, then δ = 1 - n + n - 2 = -1
-
-Which is crap.
+Which is always possible, except for corner cases when m = 0 or k =
+0. So switch.
 
 -}
 
@@ -184,17 +172,19 @@ monteCarlo d p n = d / ((1-p)^n * (1 - d) + d)
 {-
 B = {m has property "being composite"}
 A = {Miller-Rabin test says "Yes" ~ "Found compositeness witness"}
+δ = P(B^c) = 1/ln(n)
+p = 3/4
 
 The task is to estimate (B^c|(A^c)^N), which is a direct application of the 5.28.
 
 P ≥ δ / [ (1-p)^N * (1 - δ) + δ ]
   = 1/ln(n) / [ (1/4)^N * (1-1/ln(n)) + 1/ln(N) ]
   = 1/ln(n) / [ (1/4)^N * (ln(n)-1) / ln(n) + 1/ln(N) ]
-  = 1 / [ (1/4)^N * (ln(n)-1) + 1 ]
-  = 1 / [ (1/4)^N * ln(n) - (1/4)^N + 1 ]
-  = 1 / [ (1/4)^N * ln(n) + (1 - 4^(-N)) ]
-  = 1 / [ (1/4)^N * ln(n) + (1 - 2^(-(N+1))) ]
+  = 4^N / [ ln(n) - 1 + 4^N ]
+  ≥ 4^N / [ ln(n) + 4^N ]
+  = 1 / [ 1 + ln(n) / 4^N ]
 
+It's almost what they've asked me for, maybe even better.
 -}
 
 ----------------------------------------------------------------------------
@@ -202,7 +192,10 @@ P ≥ δ / [ (1-p)^N * (1 - δ) + δ ]
 ----------------------------------------------------------------------------
 
 {-
-Correlation ≠ causation.
+Correlation ≠ causation. Probably bigger shoe size correlates with
+age, which causes better spelling skills.
+
+https://www.gwern.net/Causality
 -}
 
 ----------------------------------------------------------------------------
@@ -215,4 +208,27 @@ f_X(k) = (n choose k) p^k (1-p)^{n-k}
 ∑{k=0..n}(f_X(k))
   = ∑ (n choose k) p^k (1-p)^{n-k}
   = (p + (1-p))^n = 1
+-}
+
+----------------------------------------------------------------------------
+-- 5.33
+----------------------------------------------------------------------------
+
+{-
+(a) lhs: sum(nx^n)
+  = sum(D(x^n))
+  = D(sum(x^n))
+  = x * d(sum(x^n))/dx
+  = x * d(1/(1-x))/dx
+  = x * 1/(1-x)^2
+  = x^2/(1-x)^2
+
+(b) D(D(x^n)) = n^2*x^n
+
+sum(D(D(x^n)))
+  = D(D(sum(x^n)))
+  = xd/dx (x*d/dx (1/(1-x)))
+  = (x^2 + x) / (1 - x)^3
+
+(c)-(e) boring
 -}
