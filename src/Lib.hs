@@ -12,6 +12,7 @@ module Lib
        , eulerPhiSlow
        , eulerPhiFast
        , order
+       , findCollision
        , logD
        , logDTrialAndError
        , logDShank
@@ -97,6 +98,19 @@ order p g = case filter (\e -> exp p g e == 1) $ factors (p-1) of
     divides m n = n `mod` m == 0
     factors n = n : [x | x <- [1..n`div`2], x `divides` n]
 
+-- | Find a collision between two lists.
+findCollision :: (Ord a) => [(a,n)] -> [(a,n)] -> Maybe (n,n)
+findCollision l1 l2 = go (sort' l1) (sort' l2)
+  where
+    sort' = sortBy (comparing fst)
+    go [] _ = Nothing
+    go _ [] = Nothing
+    go a@((x, i):xs) b@((y, j):ys) =
+        case compare x y of
+            EQ -> Just (i,j)
+            LT -> go xs b
+            GT -> go a ys
+
 logD :: (Integral n) => n -> n -> n -> n
 logD p g h = let ans = logDTrialAndError p g h
              in assert (exp p g ans == h) $
@@ -116,26 +130,17 @@ logDShank p g h
     | g == h = 1
     | isNothing _N0 = logDTrialAndError p g h
     | h == 1 = _N -- FIXME O(n)! Doesn't work on (3,1,2)
-    | otherwise = collisionGo list1 list2
+    | otherwise =
+      let (i,j) = fromMaybe (error "logDShank") $ findCollision list1 list2
+      in (i + j * n) `mod` _N
   where
     ml a b = (a * b) `mod` p
     _N0 = order p g
     _N = fromMaybe (error "shank called with bad g") _N0
     n = 1 + floor (sqrt (fromIntegral _N) :: Double)
-    list1 =
-        sortBy (comparing fst) $
-        take (fromIntegral $ n + 1) $ iterate (bimap (ml g) (+ 1)) (1, 0)
+    list1 = take (fromIntegral $ n + 1) $ iterate (bimap (ml g) (+ 1)) (1, 0)
     gMinN = exp p g (_N - n) -- g^(-n)
-    list2 =
-        sortBy (comparing fst) $
-        take (fromIntegral $ n + 1) $ iterate (bimap (ml gMinN) (+ 1)) (h, 0)
-    collisionGo [] _ = error "shankErr"
-    collisionGo _ [] = error "shankErr"
-    collisionGo a@((x, i):xs) b@((y, j):ys) =
-        case compare x y of
-            EQ -> (i + j * n) `mod` _N
-            LT -> collisionGo xs b
-            GT -> collisionGo a ys
+    list2 = take (fromIntegral $ n + 1) $ iterate (bimap (ml gMinN) (+ 1)) (h, 0)
 
 -- TODO returns trivial solutions if exist. is it correct?
 -- | Chinese remainder theorem, accepts list of (a_i,m_i) where x =
