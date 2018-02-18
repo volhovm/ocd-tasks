@@ -65,7 +65,34 @@ x > 0
 e^0 = 1, (1-x)(0) = 1, so in x = 0 they are equal, but exponent grows
 faster. Since both are monotonic, we're done.
 
-(b) I'm stuck with it. TODO
+(b) f = (1-x)^a  + ax^2/2 - e^(-ax)
+    f' = a(x - (1-x)^(a-1) + e^(-ax))
+    f'' = a(1 + (a-1)(1-x)^(a-2) - a*e^(-ax))
+    f''' = a(a^2*e(-ax) - (a-2)(a-1)(1-x)^(a-3))
+
+f(0) = 0
+f'(0) = 0,
+f''(0) = 0,
+f'''(0) = a(3a-2) > 1
+
+Since we found non-zero value in odd power, 0 is not an maxima, but an
+inflection point.
+
+Great. Next to show is that f'(x) > 0 on x ∈ (0,1].
+
+a(x - (1-x)^(a-1) + e^(-ax)) > 0
+x - (1-x)^(a-1) + e^(-ax) > 0
+x - (1-x)^(a-1) + (1-x)^a > 0
+x - x * (1-x)^(a-1) > 0
+x(1 - (1-x)^(a-1)) > 0
+(1-x)^(a-1) < 1
+
+which always holds.
+
+Ok, so f(0) = 0, it's an inflection point, then f grows on x∈[0,1] for
+all a. It means it doesn't have any more roots on this interval.
+
+:handwaving:
 
 (c) Is straightforward, just apply the (b) formula.
 Regarding D = mn^2/(2N^2), if m = p*sqrt(N), n = q*sqrt(N), then
