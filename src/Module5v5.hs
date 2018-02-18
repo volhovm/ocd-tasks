@@ -6,6 +6,8 @@ module Module5v5 (pollardRho) where
 
 import Universum hiding (exp)
 
+import Data.List (nub)
+
 import Lib (exEucl, exp, inverseP)
 
 ----------------------------------------------------------------------------
@@ -172,29 +174,62 @@ there's a probability that at some point sequence will stuck at
 For example, let's take prime 10061 and check how many different
 orbits can we find:
 
-λ> ordNub $ map (fst . findLoopSquare 10061) [1..10060]
-[0,250,1003,3,1]
+λ> ordNub $ sort $ map (fst . findLoopSquare 10061) [1..10060]
+[0,1,3,250,1003]
+λ> map length $ group $ sort $ map (fst . findLoopSquare 10061) [1..10060]
+[2,2,16,2008,8032]
+
+We have 5 orbits, only two of which are popular.
 
 Compared to x^2+1 (I've changed f inside):
-λ> ordNub $ map (fst . findLoopSquare 10061) [1..10060]
-[117,58,11,95,101,83,125,137,5,119,113,35,107,53,59,41,29,17,143,89,47,65,23,176,77,71,131,149,3,1]
 
-In general, it works with x^2. Though, slower. Also, if you (in rare
-case) find an orbit that gives you gcd = n, then switching orbit may
-be hard, you'll get the same one with a very high probability.
+λ> ordNub $ sort $ map (fst . findLoopSquare 10061) [1..10060]
+[1,3,5,11,17,23,29,35,41,47,53,58,59,65,71,77,83,89,95,101,107,113,117,119,125,131,137,143,149,176]
+λ> map length $ group $ sort $ map (fst . findLoopSquare 10061) [1..10060]
+[6,6,46,92,144,104,94,116,90,54,122,4816,138,118,56,42,40,60,118,152,182,226,2572,252,254,76,40,30,2,12]
+
+It has less shorter orbits.
+
+In general, it works with x^2. Though, slower (the more orbits we
+have, the shorter they are?..). Also, if you (in rare case) find an
+orbit that gives you gcd = n, then switching orbit may be hard, you'll
+get the same one with a very high probability.
 
 -}
 
 findLoopSquare :: Integer -> Integer -> (Integer,Integer)
 findLoopSquare n init = go (0 :: Integer) init init
   where
-    f x = (x * x) `mod` n
+    f x = (x * x - 2) `mod` n
     go i x y = let x' = f x
                    y' = f (f y)
                in if x' == y' then (i,x') else go (i+1) x' y'
 
 {-
 
-(d)-(e) TODO
+(f)
+
+Let's apply the same test as in (e):
+
+λ> ordNub $ sort $ map (fst . findLoopSquare 10061) [1..10060]
+[0,1,2,5,6,11,20,83,250,1003]
+λ> map length $ group $ sort $ map (fst . findLoopSquare 10061) [1..10060]
+[4,8,6,12,126,96,252,4536,1004,4016]
+
+So yes, it's much less random than x^2+1. Why?
+
+Indeed, it's easy to prove f^n(u+u^-1) = u^(2^n) + u^(2^(-n)): every
+time we expand (u1+u2)^2, the middle 2u1u2 is 2, minus 2 from f is 0.
+
+How does it help? u + u^-1 = (u^2 + 1) / u. For some reason, if we map
+all elements from F_p with v(u) = (u^2 + 1) / u, we get p/2+1 distinct
+results. What is the inverse of v?
+
+su = u^2 + 1 is a quadratic equation with roots:
+u = (s +- sqrt(s^2 - 4))/2. As we know, every second power of generator
+is a quadratic residue; I'm not sure how to link these together though.
 
 -}
+
+e544 :: Integer -> [Integer]
+e544 p = nub $ map (\u -> (((u * u + 1) `mod` p) * inverseP u p) `mod` p) [1..p-1]
