@@ -225,9 +225,12 @@ How does it help? u + u^-1 = (u^2 + 1) / u. For some reason, if we map
 all elements from F_p with v(u) = (u^2 + 1) / u, we get p/2+1 distinct
 results. What is the inverse of v?
 
-su = u^2 + 1 is a quadratic equation with roots:
-u = (s +- sqrt(s^2 - 4))/2. As we know, every second power of generator
-is a quadratic residue; I'm not sure how to link these together though.
+su = u^2 + 1 is a quadratic equation with roots: u = (s +- sqrt(s^2 -
+4))/2. As we know, every second power of generator is a quadratic
+residue, so half of group elements have roots.  We want s^2 - 4 = k^2
+for some k, so s = sqrt(k^2 + 4). The distribution of k is uniform --
+there are p/2 distinct k^2, (+4) only shifts it, so there must be p/2
+valid candidates for s.
 
 -}
 
