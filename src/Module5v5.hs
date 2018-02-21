@@ -48,15 +48,15 @@ Must be correct.
 ----------------------------------------------------------------------------
 
 pollardRho :: Integer -> Integer -> Integer -> Integer
-pollardRho p g h = go 1 1 $ PollardAcc 0 0 0 0
+pollardRho p g h = go (0 :: Integer) 1 1 $ PollardAcc 0 0 0 0
   where
-    go x y acc | x == y = pollardAfter acc p g h
-    go x y PollardAcc{..} = do
+    go i x y acc | x == y && i > 0 = pollardAfter acc p g h
+    go i x y PollardAcc{..} = do
         let (x',a',b') = pFoo x paA paB
         let (y',g',d') =
                 let (m1, m2, m3) = pFoo y paG paD -- uncurryN?
                 in pFoo m1 m2 m3
-        go x' y' $ PollardAcc a' b' g' d'
+        go (i+1) x' y' $ PollardAcc a' b' g' d'
 
     p1 = p `div` 3
     p2 = 2 * p1
@@ -87,8 +87,6 @@ pollardRho p g h = go 1 1 $ PollardAcc 0 0 0 0
 14557
 λ> pollardRho 15239131 29 5953042
 2528453
-
-The last one took a while even with -O2 :\
 -}
 
 ----------------------------------------------------------------------------
@@ -125,8 +123,6 @@ be the one with higher probability. The first encountered gcd(x-y,N) =
 d /= 1 can be resolved in two ways. Either d == N, thus we achieved
 nothing (and we should repeat the whole procedure with another x_0),
 or d | N, then we've found some divisor of N, most probably p.
-
-(b)
 -}
 
 pollardRhoFactor :: Integer -> Integer -> Maybe (Integer,Double)
@@ -142,15 +138,14 @@ pollardRhoFactor n init = go (0 :: Integer) init init
               | otherwise -> Just $ (n `div` d,fromIntegral i / sqrt (fromIntegral n))
 
 {-
+(b)
 λ> pollardRhoFactor 2201
 Just (71,6.394568344792313e-2)
 λ> pollardRhoFactor 9409613
 Just (17393,1.0757913769276532e-2)
 λ> pollardRhoFactor 1782886219
 Just (224743,2.9603850270054325e-3)
--}
 
-{-
 (c)
 λ> pollardRhoFactor 2201
 Nothing

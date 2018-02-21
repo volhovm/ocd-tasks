@@ -47,8 +47,10 @@ e536a2 n = 1 - (364/365) ^ n
 ----------------------------------------------------------------------------
 
 {-
-(a) 1 - (51/52)^8 = 0.1438
-(b) 1 - (44/52 * ... * 37/52) = 0.866
+
+(a) 1 - (51/52 * 50/51 * ... * 44/45) = 0.1538
+    BTW, it's the same as 8/52
+(b) 1 - (44/52 * 43/51 * ... * 37/45) = 0.7644
 -}
 
 ----------------------------------------------------------------------------
@@ -110,7 +112,7 @@ dlpCollision n p g h = do
         genList = replicateM n (randomRIO (0, p))
     as <- map (\y -> (exp p g y,y)) <$> genList
     bs <- map (\z -> ((h * exp p g z) `mod` p,z)) <$> genList
-    let convert (y,z) = (y - z) `mod` p
+    let convert (y,z) = (y - z) `mod` (p - 1)
     pure $ convert <$> findCollision as bs
 
 {-
@@ -120,7 +122,7 @@ Nothing
 λ> dlpCollision 20 811 10 106
 Nothing
 λ> dlpCollision 20 811 10 106
-Just 646
+Just 645
 λ> dlpCollision 20 811 10 106
-Just 646
+Just 645
 -}
