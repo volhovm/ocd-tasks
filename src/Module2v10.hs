@@ -8,23 +8,18 @@
 {-# LANGUAGE TupleSections              #-}
 {-# LANGUAGE TypeApplications           #-}
 {-# LANGUAGE UndecidableInstances       #-}
-{-# LANGUAGE ViewPatterns               #-}
 {-# OPTIONS_GHC -fno-warn-unused-top-binds #-}
 {-# OPTIONS_GHC -fno-warn-type-defaults #-}
 
 module Module2v10 where
 
-import qualified Prelude
 import Universum hiding ((<*>))
-import Unsafe (unsafeHead, unsafeLast)
+import Unsafe (unsafeHead)
 
-import Control.Lens (ix, (&))
 import Control.Monad (replicateM)
-import Data.Bifunctor (bimap)
-import Data.List (intercalate, (!!))
 import Data.Proxy (Proxy (..))
 
-import Lib (inverse)
+import Lib
 
 ----------------------------------------------------------------------------
 -- 2.29
@@ -157,198 +152,24 @@ F -- field. a,b -- nonzero polynomials in F[x].
 -- 2.35
 ----------------------------------------------------------------------------
 
-class WithTag a where
-    getTag :: Num n => Proxy a -> n
-
-class Ring a where
-    f0 :: a
-    (<+>) :: a -> a -> a
-    fneg :: a -> a
-    f1 :: a
-    (<*>) :: a -> a -> a
-
-(<->) :: Ring a => a -> a -> a
-(<->) a b = a <+> (fneg b)
-
-times :: (Integral n, Ring a) => n -> a -> a
-times (fromIntegral -> n) a = foldl' (<+>) f0 $ replicate n a
-
-(<^>) :: (Integral n, Ring a) => a -> n -> a
-(<^>) a (fromIntegral -> n) = foldl' (<*>) f1 $ replicate n a
-
-instance Ring Integer where
-    f0 = 0
-    f1 = 1
-    (<+>) = (+)
-    fneg = negate
-    (<*>) = (*)
-
-class Ring a => Field a where
-    finv :: a -> a
-    -- ^ Multiplicative inverse
-
--- Z/nZ
-newtype Z a = Z Integer deriving (Num, Eq, Ord, Enum, Real, Integral)
-
-instance Show (Z a) where
-    show (Z i) = show i
-
-#define GenZ(N) \
-  data Z/**/N = Z/**/N; \
-  instance WithTag Z/**/N where { getTag _ = fromIntegral N };\
-
-GenZ(2)
-GenZ(3)
-GenZ(4)
-GenZ(5)
-GenZ(6)
-GenZ(7)
-GenZ(8)
-GenZ(9)
-GenZ(11)
-GenZ(13)
-
-instance WithTag a => WithTag (Z a) where
-    getTag _ = getTag (Proxy :: Proxy a)
-
-instance WithTag a => Ring (Z a) where
-    f0 = Z 0
-    (Z a) <+> (Z b) = Z $ (a + b) `mod` getTag (Proxy :: Proxy (Z a))
-    f1 = Z 1
-    fneg (Z 0) = Z 0
-    fneg (Z i) = Z $ (getTag (Proxy :: Proxy (Z a)) - i) `mod` getTag (Proxy :: Proxy (Z a))
-    (Z a) <*> (Z b) = Z $ a * b `mod` getTag (Proxy :: Proxy (Z a))
-
-instance (WithTag a) => Field (Z a) where
-    finv a = inverse a (getTag (Proxy :: Proxy (Z a)))
-
--- Empty polynomial is equivalent for [0]. Head -- higher degree.
-newtype Poly a = Poly { fromPoly :: [a] } deriving (Functor)
-
-instance Show a => Show (Poly a) where
-    show (Poly l) = "Poly " ++ show l
-
--- Removes zeroes from the beginning
-stripZ :: (Eq a, Ring a) => Poly a -> Poly a
-stripZ (Poly []) = Poly [f0]
-stripZ r@(Poly [_]) = r
-stripZ (Poly xs) =
-    let l' = take (length xs - 1) xs
-    in Poly $ dropWhile (== f0) l' ++ [unsafeLast xs]
-
-prettyPoly :: (Show a, Eq a, Ring a) => Poly a -> String
-prettyPoly (stripZ -> (Poly p)) =
-    intercalate " + " $
-    map mapFoo $
-    filter ((/= f0) . fst) $
-    reverse $ reverse p `zip` [0..]
-  where
-    mapFoo (n,0) = show n
-    mapFoo (f,1) | f == f1 = "x"
-    mapFoo (f,i) | f == f1 = "x^" ++ show i
-    mapFoo (n,1) = show n ++ "x"
-    mapFoo (n,i) = show n ++ "x^" ++ show i
-
-instance (Eq a, Ring a) => Eq (Poly a) where
-    (==) (stripZ -> (Poly p1)) (stripZ -> (Poly p2)) = p1 == p2
-
-deg ::  (Eq a, Ring a, Integral n) => Poly a -> n
-deg (stripZ -> (Poly p)) = fromIntegral $ length p - 1
-
--- Zips two lists adding zeroes to end of the shortest one
-zip0 :: (Ring a) => [a] -> [a] -> [(a,a)]
-zip0 p1 p2 = uncurry zip sameSize
-  where
-    shortest | length p1 < length p2 = (p1,p2)
-             | otherwise = (p2,p1)
-    diff = length (snd shortest) - length (fst shortest)
-    sameSize = shortest & _1 %~ ((replicate diff f0) ++)
-
-instance (Eq a, Ring a) => Ring (Poly a) where
-    f0 = Poly [f0]
-    f1 = Poly [f1]
-    fneg = fmap fneg
-    (Poly p1) <+> (Poly p2) =
-        stripZ $ Poly $ map (uncurry (<+>)) $ zip0 p1 p2
-    lhs@(Poly p1) <*> rhs@(Poly p2) =
-        let acc0 = replicate ((deg lhs + deg rhs)+1) f0
-            foldFooSub acc ((e1,d1), (e2,d2)) =
-                acc & ix (d1 + d2) %~ (<+> (e1 <*> e2))
-            foldFoo acc ((e1,d1),el2) =
-                foldl' foldFooSub acc $ map ((e1,d1),) $ withIndex el2
-            withIndex a = reverse $ reverse a `zip` [0..]
-        in stripZ . Poly $ reverse $ foldl' foldFoo acc0 $ map (,p2) $ withIndex p1
-
-class Ring a => Euclidian a where
-    (</>) :: a -> a -> (a,a)
-    -- ^ Division with (quotient,remainder)
-
-instance Euclidian Integer where
-    (</>) a b = (a `div` b, a `mod` b)
-
--- Ugh, terrible
-instance WithTag a => Euclidian (Z a) where
-    (</>) (Z a) (Z b) =
-        bimap
-            (Z . (`mod` getTag (Proxy :: Proxy (Z a))))
-            (Z . (`mod` getTag (Proxy :: Proxy (Z a))))
-            (a `div` b, a `mod` b)
-
-assert :: Bool -> Text -> t -> t
-assert b str action
-    | not b = error str
-    | otherwise = action
-
--- | a / b = (quotient,remainder)
-euclPoly :: (Eq a, Field a) => Poly a -> Poly a -> (Poly a, Poly a)
-euclPoly (stripZ -> a) (stripZ -> b@(Poly p2)) =
-    let res@(q,r) = euclPolyGo f0 a
-    in assert ((b <*> q) <+> r == a) "EuclPoly assert failed" res
-  where
-    euclPolyGo (stripZ -> k) (stripZ -> r)
-        | deg r < deg b || r == f0 = (k,r)
-    euclPolyGo (stripZ -> k) (stripZ -> r@(Poly pr)) =
-        let e = deg r
-            d = deg b
-            re = pr !! 0
-            bd = p2 !! 0
-            x = Poly $ (re <*> (finv bd)) : replicate (e - d) f0
-            k' = k <+> x
-            r' = r <-> (x <*> b)
-        in euclPolyGo k' r'
-
-instance (Field a, Eq a) => Euclidian (Poly a) where
-    (</>) = euclPoly
-
-gcdEucl :: (Eq a, Euclidian a) => a -> a -> a
-gcdEucl a b =
-    let res = gcdEuclGo a b
-    in assert (snd (a </> res) == f0) "gcd doesn't divide a" $
-       assert (snd (b </> res) == f0) "gcd doesn't divide a" $
-       res
-  where
-    gcdEuclGo r0 r1 =
-        let (_,r) = r0 </> r1
-        in if r == f0 then r1 else gcdEuclGo r1 r
-
 {-
 λ> gcdEucl (Poly [1,0,2,10::Z Z13]) (Poly [3,4,6])
 Poly [9,4]
 -}
 
-e235a, e235b :: (WithTag a) => Poly (Z a)
+e235a, e235b :: (KnownNat a) => Poly (Z a)
 e235a = f0 <+> Poly [1, 3, fneg 5, fneg 3, 2, 2]
 e235b = f0 <+> Poly [1, 1, fneg 2, 4, 1, 5]
 
-e235gcd :: forall a. (WithTag a) => Poly (Z a)
+e235gcd :: forall a. (KnownNat a, PrimeNat a) => Poly (Z a)
 e235gcd = gcdEucl e235a e235b
 
 e235 :: IO ()
 e235 = do
-    putStrLn . prettyPoly $ e235gcd @Z2
-    putStrLn . prettyPoly $ e235gcd @Z3
-    putStrLn . prettyPoly $ e235gcd @Z5
-    putStrLn . prettyPoly $ e235gcd @Z7
+    putStrLn . prettyPoly $ e235gcd @2
+    putStrLn . prettyPoly $ e235gcd @3
+    putStrLn . prettyPoly $ e235gcd @5
+    putStrLn . prettyPoly $ e235gcd @7
 
 {-
 λ> e235
@@ -365,13 +186,13 @@ x^2 + 2x + 2
 -- Returns for a, b their u, v so that au + vb = gcd
 -- Performance is terrible, but i don't want to re-implement
 -- extended euclidian algorithm. It actually freezes for Z > 4 lol.
-gcdUV :: forall a . (WithTag a) => Poly (Z a) -> Poly (Z a) -> (Poly (Z a), Poly (Z a))
+gcdUV :: forall a . (PrimeNat a) => Poly (Z a) -> Poly (Z a) -> (Poly (Z a), Poly (Z a))
 gcdUV a b = unsafeHead $ filter (\(u,v) -> (u <*> a) <+> (v <*> b) == gcd') pairs
   where
     maxDeg = max (deg a) (deg b)
     pairs = [(x,y) | x <- polys, y <- polys]
     polys = map ((<+> f0) . Poly) $ replicateM maxDeg allValues
-    allValues = [0..getTag (Proxy :: Proxy (Z a))-1]
+    allValues = map (toZ @a) [0..natVal (Proxy :: Proxy a)-1]
     gcd' = gcdEucl a b
 
 {-
@@ -386,14 +207,14 @@ It's technically difficult, I understand how it works, I'm on session. :(
 -- 2.37
 ----------------------------------------------------------------------------
 
-divisors :: forall a . (WithTag a) => Poly (Z a) -> [Poly (Z a)]
+divisors :: forall a . (PrimeNat a) => Poly (Z a) -> [Poly (Z a)]
 divisors a =
      filter (\b -> let (_,r) = a </> b in and [b /= f0, r == f0]) polys
   where
     polys = map ((<+> f0) . Poly) $ replicateM (deg a + 1) allValues
-    allValues = [0..getTag (Proxy :: Proxy a)-1]
+    allValues = map (toZ @a) [0..natVal (Proxy :: Proxy a)-1]
 
-polyReducable :: forall a . (WithTag a) => Poly (Z a) -> Bool
+polyReducable :: forall a . (PrimeNat a) => Poly (Z a) -> Bool
 polyReducable a = any (\b -> b /= f1 && b /= a) $ divisors a
 
 {-
@@ -416,10 +237,10 @@ x^3 + x + 1 = (x^2 + a)(x + b). What a and b can be? Etc.
 ----------------------------------------------------------------------------
 
 
-e239check :: Poly (Z Z7) -> Bool
+e239check :: Poly (Z 7) -> Bool
 e239check p = all (\k -> (p <^> k) `mod'` pr /= f1) divs
   where
-    pr = Poly [1,0,1 :: Z Z7]
+    pr = Poly [1,0,1 :: Z 7]
     mod' a b = snd $ a </> b
     divs = filter (\b -> 48 `mod` b == 0) [1..24]
 

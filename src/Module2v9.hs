@@ -66,7 +66,7 @@ testDPohlig =
         , g < p
         , b < p] $
     \(p, g, b) -> do
-        putText "mda"
+        when (b == 1 && even g) $ putStr ("." :: Text) -- simple progress bar :)
         let h = exp p g b
         let label = show g <> "^" <> show b <> " ~? " <> show h <> " (mod " <> show p <> ")"
         let b' = logDPohligHellman p g h

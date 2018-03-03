@@ -3,11 +3,12 @@
 
 module Module1v2 () where
 
+import Prelude hiding (gcd)
+
 import Control.Monad (forM_, unless)
 import Data.Bifunctor (bimap, second)
 import Data.Bool (bool)
 import Data.Tuple (swap)
-import Prelude hiding (gcd)
 
 gcd :: Int -> Int -> Int
 gcd a b = bool (gcd b r) b (q * b == a)
@@ -40,9 +41,6 @@ testGcd =
         --putStrLn (show a ++ "~" ++ show b)
         unless (gcd a b == (let (ka,kb) = gcd' a b in ka * a + kb * b)) $
             error (show a ++ "~" ++ show b)
-
-main :: IO ()
-main = undefined
 
 {-
 1.11

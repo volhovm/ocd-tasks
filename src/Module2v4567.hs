@@ -6,12 +6,9 @@ module Module2v4567 () where
 import Prelude hiding (exp)
 
 import Control.Monad (forM_, unless)
-import Data.Bifunctor (bimap)
-import Data.List (sortBy)
 import Data.Numbers.Primes (primes)
-import Data.Ord (comparing)
 
-import Lib (exp, inverse, logDTrialAndError)
+import Lib (exp, inverse, logDShank, logDTrialAndError)
 
 ------ 2.8 Elgamal general
 
@@ -63,30 +60,6 @@ g^ka which is c₁^a then inverted to decrypt m.
 
 ------ 2.17
 
-shank :: Int -> Int -> Int -> Int
-shank p g 1 = logDTrialAndError p g 1
-shank p g h = collisionGo list1 list2
-  where
-    ml a b = (a * b) `mod` p
-    getN 1 m  = m
-    getN g' m = getN (g' `ml` g) (m + 1)
-    _N = getN g 1
-    n = 1 + floor (sqrt $ fromIntegral _N :: Double)
-    list1 =
-        sortBy (comparing fst) $
-        take (n + 1) $ iterate (bimap (ml g) (+ 1)) (1, 0)
-    gMinN = exp p g (_N - n) -- g^(-n)
-    list2 =
-        sortBy (comparing fst) $
-        take (n + 1) $ iterate (bimap (ml gMinN) (+ 1)) (h, 0)
-    collisionGo [] _ = error "shankErr"
-    collisionGo _ [] = error "shankErr"
-    collisionGo a@((x, i):xs) b@((y, j):ys) =
-        case compare x y of
-            EQ -> (i + j * n) `mod` _N
-            LT -> collisionGo xs b
-            GT -> collisionGo a ys
-
 {-
 λ> shank 71 11 21
 37
@@ -101,16 +74,20 @@ testLogs =
     forM_
         [ (p, g, b)
         | p <- take 16 primes
-        , g <- [2 .. 100]
-        , b <- [1 .. 100]
+        , g <- [(2::Int) .. 100]
+        , b <- [(1::Int) .. 100]
         , g < p
         , b < p ] $
     \(p, g, b) -> do
         let h = exp p g b
-        let label = show p ++ ", " ++ show g ++ ", " ++ show b ++ ", " ++ show h
-        putStrLn label
-        let b1 = shank p g h
+        let label = show g ++ "^" ++ show b ++ " = " ++ show h ++ " mod " ++ show p
+        -- putStrLn label
+        let b1 = logDShank p g h
             b2 = logDTrialAndError p g h
         unless (exp p g b1 == h) $ error $ "shank failed: " ++ label
         unless (exp p g b2 == h) $ error $ "trial/error failed: " ++ label
-        unless (b1 == b2) $ error $ "logs are not equal: " ++ label
+        -- The situation where b1 /= b2 is completely normal, since noone guarantees
+        -- that g is group generator.
+        -- unless (b1 == b2) $
+        --     putStrLn $
+        --     "logs are not equal: " ++ label ++ ": " ++ show b1 ++ ", " ++ show b2

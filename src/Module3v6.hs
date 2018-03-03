@@ -74,16 +74,7 @@ e325 n k b0 = unsafeHead $ mapMaybe verifyAb abs'
 -- 3.26 Even more improved version
 ----------------------------------------------------------------------------
 
-combinations :: Integer -> [a] -> [[a]]
-combinations 0 _  = return []
-combinations n xs = do y:xs' <- tails xs
-                       ys <- combinations (n-1) xs'
-                       return (y:ys)
-
-allCombinations :: [a] -> [[a]]
-allCombinations xs = concatMap (flip combinations xs) [1..(toInteger $ length xs)]
-
--- Given a prime, tells which number is it.
+-- Given a prime, tells which prime number index it has.
 -- λ> pNumber 5
 -- 2
 -- λ> pNumber 3

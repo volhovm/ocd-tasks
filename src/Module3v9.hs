@@ -103,25 +103,7 @@ sRootNaive p a = find (\x -> exp p x 2 == a) [1..p-1]
 -- 3.40 Discrete logarithm insecure bits
 ----------------------------------------------------------------------------
 
--- | Calculating Jacobi symbol.
-isSquareRoot :: Integer -> Integer -> Integer
-isSquareRoot = go
-  where
-    go a b
-        | (a `mod` b) == b-1 = case b `mod` 4 of
-            1 -> 1
-            3 -> -1
-            _ -> error "isSquareRoot: can't happen (1)"
-        | (a `mod` b) == 2 = case b `mod` 8 of
-            1 -> 1
-            7 -> 1
-            3 -> -1
-            5 -> -1
-            _ -> error "isSquareRoot: can't happen (2)"
-        | even a = go 2 b * go (a `div` 2) b
-        | otherwise = case (a `mod` 4, b `mod` 4) of
-            (3,3) -> go (-1) a * go (b `mod` a) a
-            _     -> go (b `mod` a) a
+-- isSquareRoot in Lib implements jacobi
 
 {-
 

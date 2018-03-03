@@ -5,7 +5,9 @@
 -- sections. Not for real cryptographic use ofc.
 
 module Lib.Misc
-       ( exEucl
+       ( combinations
+       , allCombinations
+       , exEucl
        , coprimes
        , inverseP
        , inverse
@@ -25,7 +27,6 @@ module Lib.Misc
        ) where
 
 import Universum hiding (exp)
-import Unsafe (unsafeHead)
 
 import Control.Exception.Base (assert)
 import Data.Bifunctor (bimap)
@@ -33,6 +34,17 @@ import Data.List (nub, sortBy)
 import Data.Maybe (fromMaybe, isNothing)
 import Data.Numbers.Primes (isPrime, primeFactors)
 import Data.Ord (comparing)
+
+-- | Returns combinations of given size.
+combinations :: Integer -> [a] -> [[a]]
+combinations 0 _  = return []
+combinations n xs = do y:xs' <- tails xs
+                       ys <- combinations (n-1) xs'
+                       return (y:ys)
+
+-- | Returns all possible combinations of the list.
+allCombinations :: [a] -> [[a]]
+allCombinations xs = concatMap (flip combinations xs) [1..(toInteger $ length xs)]
 
 -- | For a,b returns (gcd,u,v) such that au + bv = gcd.
 exEucl :: (Integral n) => n -> n -> (n, n, n)
@@ -121,7 +133,9 @@ logD p g h = let ans = logDTrialAndError p g h
 -- | Trial-and-error discrete logarithm solving algorithm
 logDTrialAndError :: (Integral n) => n -> n -> n -> n
 logDTrialAndError p g h =
-    fst . unsafeHead $ filter ((== h) . snd) $
+    fst $
+    fromMaybe (error "logDTrialAndError") $
+    find ((== h) . snd) $
     map (\x -> (x, exp p g x)) (reverse [0..p-1])
 
 -- | Solving log problem with shank algorithm. Requires g to be in set

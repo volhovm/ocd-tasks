@@ -4,10 +4,13 @@
 
 module Module1v7 () where
 
+import Universum
+
 import qualified Data.ByteString as BS
 import Data.Numbers.Primes (primeFactors)
 import Data.Word (Word8)
-import Prelude
+
+import Lib (inverseP)
 
 ------ 1.42
 badday :: [Word8]
@@ -15,21 +18,13 @@ badday = BS.unpack "Bad day, Dad."
 
 ------ 1.43 (a)
 
-inverse :: Int -> Int -> Int
-inverse a0 p = a0 `power` (p-2)
-  where
-    power _ 0 = 0
-    power a 1 = a `mod` p
-    power a b = ((power a (b-1)) `mod` p) * a `mod` p
-
-
 encryptAffine :: (Int, Int) -> Int -> Int -> Int
 encryptAffine (k1, k2) p m = ((k1 * m) `mod` p + k2) `mod` p
 
 decryptAffine :: (Int, Int) -> Int -> Int -> Int
 decryptAffine (k1, k2) p c = (k1' * ((c - k2) `mod` p)) `mod` p
   where
-    k1' = inverse k1 p
+    k1' = inverseP k1 p
 
 {-
 λ> encryptAffine (34, 71) 541 204
@@ -76,11 +71,11 @@ c₃ = 565
 
 e143_k1, e143_k2, e143_c3 :: Int
 e143_k2 = (((((324 * 491) `mod` p) - ((381 * 387) `mod` p)) `mod` p) *
-      (inverse ((491 - 387) `mod` p) p)) `mod` p
+      (inverseP ((491 - 387) `mod` p) p)) `mod` p
   where
     p = 601
 e143_k1 = (((324 + 381 - 2 * e143_k2) `mod` p) *
-           (inverse ((387 + 491) `mod` p) p)) `mod` p
+           (inverseP ((387 + 491) `mod` p) p)) `mod` p
   where
     p = 601
 e143_c3 = encryptAffine (e143_k1, e143_k2) 601 173

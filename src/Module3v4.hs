@@ -74,6 +74,8 @@ traceT _ = identity -- $ trace @Text
 fermatWitness :: Integer -> Integer -> Bool
 fermatWitness n a = exp n a n /= a
 
+-- TODO Maybe move this into lib?
+
 -- | Checks if number is witness.
 millerRabinTest :: Integer -> Integer -> Bool
 millerRabinTest n a

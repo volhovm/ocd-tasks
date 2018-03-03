@@ -9,42 +9,20 @@ import Data.Numbers.Primes (primeFactors)
 import Debug.Trace
 import Prelude hiding (exp)
 
-import Lib (coprimes, exp, inverse)
+import Lib (crt, exp)
 
------- Let's write chinese algorithm first
-
--- Accepts pairs of (aᵢ,mᵢ) where x = aᵢ (mod mᵢ).
-chinese :: [(Integer,Integer)] -> Integer
-chinese [] = error "chinese called with empty list"
-chinese xs | not (coprimes $ map snd xs) =
-             error $ "not relative primes: " ++ show (map snd xs)
-chinese ((a₁,m₁):xs0) = chineseGo xs0 (a₁ `mod` m₁) m₁
-  where
-    chineseGo [] c _              = c
-    chineseGo ((a, m):xs) c mprod =
-        --trace ("x: " ++ show x) $
-        --trace ("c: " ++ show c) $
-        --trace ("mprod: " ++ show mprod) $
-        --trace ("m': " ++ show m') $
-        --trace ("y: " ++ show y) $
-        --trace ("c': " ++ show c') $
-        chineseGo xs c' (mprod * m)
-        where
-          m' = inverse mprod m
-          y = (m' * ((a - c) `mod` m)) `mod` m
-          c' = c + mprod * y
-
+-- CRT itself is implemented in Lib.
 
 ------ 2.18
 
 e218 :: IO ()
 e218 = do
-    print $ chinese [(3,7), (4,9)]
-    print $ chinese [(137,423), (87,191)]
-    print $ chinese [(5,9), (6,10), (7,11)]
-    print $ chinese [(37,43), (22,49), (18,71)]
+    print $ crt [(3,7), (4,9)]
+    print $ crt [(137,423), (87,191)]
+    print $ crt [(5,9), (6,10), (7,11)]
+    print $ crt [(37,43), (22,49), (18,71)]
     -- (3)
-    print $ chinese [(133,451), (237,697)]
+    print $ crt [(133,451), (237,697)]
 
 {-
 λ> e218
@@ -59,7 +37,7 @@ e218 = do
 
 -- 23
 e219 :: Integer
-e219 = chinese [(2,3), (3,5), (2,7)]
+e219 = crt [(2,3), (3,5), (2,7)]
 
 
 ------ 2.20 on the paper
@@ -76,9 +54,6 @@ sqrtP p a0 | p `mod` 4 /= 3 =
                [a] -> Just a
                _   -> error "sqrtP: can't happen"
 sqrtP p a0 = do
-    --guard $ p + 1 `mod` 4 == 0
---    traceShowM a
---    traceShowM b
     guard $ exp p b 2 == a
     pure b
   where
@@ -102,7 +77,7 @@ sqrtPN n a = do
     perms' ys []     = ys
     perms' ys (x:xs) = perms' (map (x :) ys ++ map ((-x) :) ys) xs
     chineseInput = map (\xs -> map (\(a', m) -> (a' `mod` m, m)) $ xs `zip` ps) permutations
-    chineseSolved = map chinese $ map nub chineseInput
+    chineseSolved = map crt $ map nub chineseInput
 
 {-
 λ> sqrtPN 437 340
@@ -127,7 +102,7 @@ So we have like only 2 distinct square roots --
 
 -}
 
------- 2.24 :|
+------ 2.24
 
 -- returns square root of a mod p^2 knowing b -- sqrt a mod p
 -- but not really
