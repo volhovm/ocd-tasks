@@ -2,6 +2,7 @@
 {-# LANGUAGE CPP                        #-}
 {-# LANGUAGE DataKinds                  #-}
 {-# LANGUAGE DefaultSignatures          #-}
+{-# LANGUAGE DeriveFunctor              #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -44,6 +45,8 @@ module Lib.Field
     , representBack
     , remakeFinPoly
 
+    , Matrix (..)
+    , showMatrix
     , gaussSolve
     ) where
 
@@ -52,6 +55,7 @@ import Universum hiding (head, (<*>))
 
 import Control.Lens (ix, (%=), (.=))
 import Data.List (head, last, nub, (!!))
+import qualified Data.List as L
 
 ----------------------------------------------------------------------------
 -- Rings
@@ -398,7 +402,11 @@ _testFinPolys = do
 ----------------------------------------------------------------------------
 
 -- | Row dominated matrix
-data Matrix a = Matrix [[a]] deriving Show
+newtype Matrix a = Matrix { unMatrix :: [[a]] } deriving (Show,Functor,Eq)
+
+-- | Matrix is row-dominated.
+showMatrix :: (Show a) => Matrix a -> String
+showMatrix (Matrix m) = L.unlines $ map (intercalate " " . map show) m
 
 -- | You pass linear system [A|b], where A is n×n and get list of
 -- solutions.

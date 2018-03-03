@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# OPTIONS_GHC -fno-warn-unused-top-binds #-}
 
 -- | Index calculus method for solving DLP in F_p
@@ -5,67 +6,20 @@
 module Module3v8 () where
 
 import Universum hiding (exp)
-import Unsafe (unsafeHead, unsafeLast)
+import Unsafe (unsafeLast)
 
-import Control.Lens (ix, (%=))
-import Data.List ((!!))
 import Data.Numbers.Primes (primeFactors, primes)
-import qualified Data.Text as T
 import System.Random (randomRIO)
 
-import Lib hiding (gaussSolve)
+import Lib
 
--- | Matrix is row-dominated.
-showMatrix :: [[Integer]] -> Text
-showMatrix m = T.unlines $ map (\line -> T.intercalate " " $ map show line) m
-
--- | You pass linear system [A|b], where A is n×n and get list of
--- solutions.
-gaussSolve :: (MonadIO m) => Integer -> [[Integer]] -> m [[Integer]]
-gaussSolve p matrix = do
-    let m1 = initialSort matrix
-    putText $ showMatrix m1
-    pure $ execState (diagonal1 >> diagonal2) m1
-  where
-    ix2 :: Int -> Int -> State [[Integer]] Integer
-    ix2 i j = do (x :: [Integer]) <- use (ix i)
-                 pure $ x !! j
-
-    n = length matrix
-    m = length $ unsafeHead matrix
-
-    sub a b = (a - b) `mod` p
-    mul a b = (a * b) `mod` p
-
-    diagonal1 :: State [[Integer]] ()
-    diagonal1 = forM_ [0..(n-1)] $ \(i::Int) -> do
-        -- Dividing by diagonal coefficient
-        k <- ix2 i i
-        let km1 = inverseP k p
-        forM_ [i..(m-1)] $ \j -> (ix i . ix j) %= (`mul` km1)
-
-        -- For all lower levels, adding
-        forM_ [i+1..(n-1)] $ \j -> do
-            s <- ix2 j i
-            forM_ [i..m] $ \y -> do
-                x <- ix2 i y
-                ix j . ix y %= (\e -> e `sub` (s `mul` x))
-
-    diagonal2 :: State [[Integer]] ()
-    diagonal2 = forM_ (reverse [0..(n-1)]) $ \(i::Int) -> do
-        -- For all upper levels, adding
-        forM_ [0..i-1] $ \j -> do
-            s <- ix2 j i
-            forM_ [i..(m-1)] $ \y -> do
-                x <- ix2 i y
-                ix j . ix y %= (\e -> e `sub` (s `mul` x))
-
-    initialSort = sortBy (comparing $ length . takeWhile (== 0))
+mToZ :: forall n. (KnownNat n) => [[Integer]] -> Matrix (Z n)
+mToZ = Matrix . map (map $ toZ @n)
 
 testGauss :: IO ()
-testGauss = putText . showMatrix =<< gaussSolve 9539 m
+testGauss = putStrLn $ showMatrix $ gaussSolve m
   where
-    m = [[2,6,1,3030],[11,2,0,6892],[4,1,3,18312]]
+    m = mToZ @9539 [[2,6,1,3030],[11,2,0,6892],[4,1,3,18312]]
 
 primeFactorsPairs :: Integer -> [(Integer,Integer)]
 primeFactorsPairs m =
@@ -111,8 +65,8 @@ e336 = do
     -- (a)
     print $ all (\i -> bsmooth b $ exp p g i) ixs
     let m = [[2,6,1,3030],[11,2,0,6892],[4,1,3,18312]]
-    sols1 <- map unsafeLast <$> gaussSolve 9539 m
-    sols2 <- map unsafeLast <$> gaussSolve 2 m
+    let sols1 = map unZ $ unsafeLast $ unMatrix $ gaussSolve $ mToZ @9539 m
+    let sols2 = map unZ $ unsafeLast $ unMatrix $ gaussSolve $ mToZ @2 m
     print sols1
     print sols2
     -- [8195,1299,7463]
