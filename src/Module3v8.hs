@@ -13,7 +13,7 @@ import Data.Numbers.Primes (primeFactors, primes)
 import qualified Data.Text as T
 import System.Random (randomRIO)
 
-import Lib
+import Lib hiding (gaussSolve)
 
 -- | Matrix is row-dominated.
 showMatrix :: [[Integer]] -> Text

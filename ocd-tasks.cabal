@@ -10,6 +10,9 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Lib
+                     , Lib.Field
+                     , Lib.Misc
+
                      , Module1v1
                      , Module1v2
                      , Module1v3
