@@ -1,25 +1,16 @@
-{-# LANGUAGE AllowAmbiguousTypes        #-}
-{-# LANGUAGE CPP                        #-}
-{-# LANGUAGE DataKinds                  #-}
-{-# LANGUAGE DefaultSignatures          #-}
-{-# LANGUAGE DeriveFunctor              #-}
-{-# LANGUAGE FlexibleContexts           #-}
-{-# LANGUAGE FlexibleInstances          #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE KindSignatures             #-}
-{-# LANGUAGE MonoLocalBinds             #-}
-{-# LANGUAGE MultiParamTypeClasses      #-}
-{-# LANGUAGE ScopedTypeVariables        #-}
-{-# LANGUAGE TupleSections              #-}
-{-# LANGUAGE TypeApplications           #-}
-{-# LANGUAGE TypeInType                 #-}
-{-# LANGUAGE UndecidableInstances       #-}
-{-# LANGUAGE ViewPatterns               #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE CPP                 #-}
+{-# LANGUAGE DataKinds           #-}
+{-# LANGUAGE DefaultSignatures   #-}
+{-# LANGUAGE DeriveFunctor       #-}
+{-# LANGUAGE MonoLocalBinds      #-}
+{-# LANGUAGE TypeInType          #-}
 
--- | Finite fields and stuff.
+-- | Finite fields and stuff. TODO rename/decouple it.
 
 module Lib.Field
-    ( Ring(..)
+    ( AGroup (..)
+    , Ring(..)
     , (<->)
     , (<^>)
     , fastExp
@@ -61,19 +52,27 @@ import qualified Data.List as L
 -- Rings
 ----------------------------------------------------------------------------
 
-class Eq a => Ring a where
+-- Addition group. This hierarchy is not optimal.
+class Eq a => AGroup a where
     f0 :: a
+    infixl 5 <+>
     (<+>) :: a -> a -> a
     fneg :: a -> a
+
+class (Eq a, AGroup a) => Ring a where
     f1 :: a
+    infixl 6 <*>
     (<*>) :: a -> a -> a
 
+infixl 5 <->
 (<->) :: Ring a => a -> a -> a
 (<->) a b = a <+> (fneg b)
 
+infixl 6 `times`
 times :: (Integral n, Ring a) => n -> a -> a
 times (fromIntegral -> n) a = foldl' (<+>) f0 $ replicate n a
 
+infixl 7 <^>
 (<^>) :: (Integral n, Ring a) => a -> n -> a
 (<^>) a (fromIntegral -> n) = foldl' (<*>) f1 $ replicate n a
 
@@ -90,11 +89,13 @@ fastExp g n = power g n
         if | bmod == 0 -> bnext <*> bnext
            | otherwise -> bnext <*> bnext <*> a
 
-instance Ring Integer where
+instance AGroup Integer where
     f0 = 0
-    f1 = 1
     (<+>) = (+)
     fneg = negate
+
+instance Ring Integer where
+    f1 = 1
     (<*>) = (*)
 
 class Ring a => Field a where
@@ -147,12 +148,14 @@ GenZ(13)
 GenZ(17)
 GenZ(9539)
 
-instance (KnownNat n) => Ring (Z n) where
+instance (KnownNat n) => AGroup (Z n) where
     f0 = Z 0
     (Z a) <+> (Z b) = toZ $ a + b
-    f1 = Z 1
     fneg (Z 0) = Z 0
     fneg (Z i) = toZ $ natValI @n - i
+
+instance (KnownNat n) => Ring (Z n) where
+    f1 = Z 1
     (Z a) <*> (Z b) = toZ $ a * b
 
 -- | Naive search for any group generator.
@@ -183,7 +186,7 @@ instance Show a => Show (Poly a) where
     show (Poly l) = "Poly " ++ show l
 
 -- Removes zeroes from the beginning
-stripZ :: (Ring a) => Poly a -> Poly a
+stripZ :: (AGroup a) => Poly a -> Poly a
 stripZ (Poly []) = Poly [f0]
 stripZ r@(Poly [_]) = r
 stripZ (Poly xs) =
@@ -204,15 +207,14 @@ prettyPoly (stripZ -> (Poly p)) =
     mapFoo (n,1) = show n ++ "x"
     mapFoo (n,i) = show n ++ "x^" ++ show i
 
-instance (Ring a) => Eq (Poly a) where
+instance (AGroup a) => Eq (Poly a) where
     (==) (stripZ -> (Poly p1)) (stripZ -> (Poly p2)) = p1 == p2
 
 deg ::  (Ring a, Integral n) => Poly a -> n
 deg (stripZ -> (Poly p)) = fromIntegral $ length p - 1
 
-
 -- Zips two lists adding zeroes to end of the shortest one
-zip0 :: (Ring a) => [a] -> [a] -> [(a,a)]
+zip0 :: (AGroup a) => [a] -> [a] -> [(a,a)]
 zip0 p1 p2 = uncurry zip sameSize
   where
     shortest | length p1 < length p2 = (p1,p2)
@@ -220,12 +222,14 @@ zip0 p1 p2 = uncurry zip sameSize
     diff = length (snd shortest) - length (fst shortest)
     sameSize = shortest & _1 %~ ((replicate diff f0) ++)
 
-instance (Ring a) => Ring (Poly a) where
+instance (AGroup a) => AGroup (Poly a) where
     f0 = Poly [f0]
-    f1 = Poly [f1]
     fneg = fmap fneg
     (Poly p1) <+> (Poly p2) =
         stripZ $ Poly $ map (uncurry (<+>)) $ zip0 p1 p2
+
+instance (Ring a) => Ring (Poly a) where
+    f1 = Poly [f1]
     lhs@(Poly p1) <*> rhs@(Poly p2) =
         let acc0 :: [a]
             acc0 = replicate ((deg lhs + deg rhs)+1) f0
@@ -323,7 +327,7 @@ getCoeffPoly :: forall p n. (KnownNat p, KnownNat n) => Poly (Z n)
 getCoeffPoly = map toZ (reflectCoeffPoly @p @n)
 
 -- Empty polynomial is equivalent for [0]. Head -- higher degree.
-newtype FinPoly p a = FinPoly (Poly a) deriving Eq
+newtype FinPoly (p :: Nat) a = FinPoly (Poly a) deriving Eq
 
 instance (Show a) => Show (FinPoly p a) where
     show (FinPoly x) = "Fin" <> show x
@@ -356,10 +360,12 @@ remakeFinPoly (FinPoly x) = mkFinPoly x
 
 type FinPolyNats p n = (KnownNat p, PrimeNat n)
 
-instance (FinPolyNats p n) => Ring (FinPoly p (Z n)) where
+instance (FinPolyNats p n) => AGroup (FinPoly p (Z n)) where
     f0 = mkFinPoly f0
     (<+>) (FinPoly p1) (FinPoly p2) = mkFinPoly (p1 <+> p2)
     fneg (FinPoly p1) = mkFinPoly $ (getCoeffPoly @p) <-> p1
+
+instance (FinPolyNats p n) => Ring (FinPoly p (Z n)) where
     f1 = mkFinPoly f1
     (<*>) (FinPoly p1) (FinPoly p2) = mkFinPoly (p1 <*> p2)
 
@@ -398,7 +404,7 @@ _testFinPolys = do
     print $ z <*> y
 
 ----------------------------------------------------------------------------
--- Gauss
+-- Matrices
 ----------------------------------------------------------------------------
 
 -- | Row dominated matrix
