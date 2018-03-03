@@ -16,6 +16,7 @@ module Lib.Field
     , fastExp
     , times
     , Field(..)
+    , FField(..)
     , Euclidian(..)
     , eDiv
     , eMod
@@ -49,10 +50,13 @@ import Data.List (head, last, nub, (!!))
 import qualified Data.List as L
 
 ----------------------------------------------------------------------------
--- Rings
+-- Typeclasses and misc
 ----------------------------------------------------------------------------
 
--- Addition group. This hierarchy is not optimal.
+-- Disclaimer: this hierarchy is not optimal. For instance,
+-- multiplicative groups can't be exressed at all :shrug:.
+
+-- Addition group.
 class Eq a => AGroup a where
     f0 :: a
     infixl 5 <+>
@@ -65,11 +69,11 @@ class (Eq a, AGroup a) => Ring a where
     (<*>) :: a -> a -> a
 
 infixl 5 <->
-(<->) :: Ring a => a -> a -> a
+(<->) :: AGroup a => a -> a -> a
 (<->) a b = a <+> (fneg b)
 
 infixl 6 `times`
-times :: (Integral n, Ring a) => n -> a -> a
+times :: (Integral n, AGroup a) => n -> a -> a
 times (fromIntegral -> n) a = foldl' (<+>) f0 $ replicate n a
 
 infixl 7 <^>
@@ -89,6 +93,34 @@ fastExp g n = power g n
         if | bmod == 0 -> bnext <*> bnext
            | otherwise -> bnext <*> bnext <*> a
 
+-- Field.
+class Ring a => Field a where
+    finv :: a -> a
+    -- ^ Multiplicative inverse.
+
+-- Finite field.
+class Field a => FField a where
+    getGen :: a
+    -- ^ Generator.
+    allElems :: [a]
+    -- ^ List all elements.
+    getFieldSize :: Proxy a -> Integer
+    -- ^ Field size.
+
+    default allElems :: [a]
+    allElems =
+        let (g :: a) = getGen
+            genPowers = iterate (g <*>) g
+        -- f0 + powers
+        in f0:(dropWhile (/= f1) genPowers)
+
+    default getFieldSize :: Proxy a -> Integer
+    getFieldSize _ = fromIntegral $ length (allElems @a)
+
+----------------------------------------------------------------------------
+-- Integer
+----------------------------------------------------------------------------
+
 instance AGroup Integer where
     f0 = 0
     (<+>) = (+)
@@ -98,26 +130,27 @@ instance Ring Integer where
     f1 = 1
     (<*>) = (*)
 
-class Ring a => Field a where
-    finv :: a -> a
-    -- ^ Multiplicative inverse
-    getGen :: a
-    -- ^ Generator
-    getFieldSize :: Proxy a -> Integer
-    -- ^ Field size
-
-    default getFieldSize :: Proxy a -> Integer
-    getFieldSize _ =
-        let (g :: a) = getGen
-            genPowers = iterate (\(i,x) -> (i+1,g <*> x)) (1,g)
-        -- f0 + powers
-        in 1 + fst (head $ dropWhile ((/= f1) . snd) genPowers)
-
 ----------------------------------------------------------------------------
--- Integer ring/field
+-- Double
 ----------------------------------------------------------------------------
 
-natValI :: forall n. KnownNat n =>  Integer
+instance AGroup Double where
+    f0 = 0
+    (<+>) = (+)
+    fneg = negate
+
+instance Ring Double where
+    f1 = 1
+    (<*>) = (*)
+
+instance Field Double where
+    finv x = 1/x
+
+----------------------------------------------------------------------------
+-- Finite integer ring/field
+----------------------------------------------------------------------------
+
+natValI :: forall n. KnownNat n => Integer
 natValI = toInteger $ natVal (Proxy @n)
 
 -- Z/nZ
@@ -159,7 +192,7 @@ instance (KnownNat n) => Ring (Z n) where
     (Z a) <*> (Z b) = toZ $ a * b
 
 -- | Naive search for any group generator.
-findGenerator :: forall a. (Show a, Field a) => [a] -> a
+findGenerator :: forall a. (Show a, FField a) => [a] -> a
 findGenerator elems =
     fromMaybe (error "Couldn't find generator!") $
     find (\g -> let s = genOrderSet [] g g in length s == n - 1) $ filter (/= f0) elems
@@ -171,8 +204,10 @@ findGenerator elems =
 
 instance (PrimeNat n) => Field (Z n) where
     finv (Z a) = toZ $ a `fastExp` (natValI @n - 2)
-    getGen = findGenerator $ map toZ [0..(natValI @n - 1)]
+instance (PrimeNat n) => FField (Z n) where
     getFieldSize _ = natValI @n
+    allElems = map toZ $ [0..(natValI @n - 1)]
+    getGen = findGenerator allElems
 
 ----------------------------------------------------------------------------
 -- Polynomials
@@ -383,6 +418,8 @@ instance PrimePoly 67 2
 instance (PrimePoly p n) => Field (FinPoly p (Z n)) where
     finv (FinPoly f) =
         mkFinPoly $ f <^> (getFieldSize (Proxy @(FinPoly p (Z n))) - 2)
+instance (PrimePoly p n) => FField (FinPoly p (Z n)) where
+    allElems = allFinPolys
     getGen = findGenerator allFinPolys
     getFieldSize _ = do
         let b :: Integer
@@ -416,7 +453,7 @@ showMatrix (Matrix m) = L.unlines $ map (intercalate " " . map show) m
 
 -- | You pass linear system [A|b], where A is n×n and get list of
 -- solutions.
-gaussSolve :: forall a. (Field a) => Matrix a -> Matrix a
+gaussSolve :: forall a. (FField a) => Matrix a -> Matrix a
 gaussSolve (Matrix m0)
     | n > m = error "gaussSolve: n > m"
     | otherwise = Matrix $ execState (diagonal1 >> diagonal2) m1
