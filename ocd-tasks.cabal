@@ -42,6 +42,11 @@ library
                      , Module5v3
                      , Module5v4
                      , Module5v5
+                     , Module5v6
+
+                     , Module6v1
+                     , Module6v2
+                     , Module6v3
   build-depends:       base >=4.9 && <4.11
                      , bytestring >=0.10
                      , containers >= 0.5.7.1

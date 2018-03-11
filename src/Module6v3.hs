@@ -9,7 +9,7 @@ import Universum
 
 import Lib.Elliptic
 import Lib.Field
-
+import Lib.Misc (inverse)
 
 ----------------------------------------------------------------------------
 -- 6.8
@@ -60,10 +60,10 @@ modulo s.
 
 e611 :: IO ()
 e611 = do
-    let solve :: forall p . (PrimeNat p) => Integer -> Integer -> Integer -> EC (Z p) -> IO ()
-        solve a b n q =
-            withECParams (ECParams (toZ a) (toZ b) :: ECParams (Z p)) $ do
-                print $ n `times` q
+    let solve :: forall m . (PrimeNat m) => Integer -> Integer -> Integer -> EC (Z m) -> IO ()
+        solve a b n p =
+            withECParams (ECParams (toZ a) (toZ b) :: ECParams (Z m)) $ do
+                print $ n `times` p
     solve @83 23 13 19 (EC 24 14)
     solve @613 143 367 23 (EC 195 9)
     solve @1999 1828 1675 11 (EC 1756 348)
@@ -145,4 +145,135 @@ e612 = do
 7 vs 5
 7 vs 6
 21 vs 11
+-}
+
+----------------------------------------------------------------------------
+-- 6.13
+----------------------------------------------------------------------------
+
+{-
+In F_p we had equation of type g^a*h^b = g^c*h^d. To come up with
+something similar here, let's try to mimic pollard's pseudorandom
+function. Let's say we will either double value, add P or Q to it. Let
+the starting point be P, because we don't have 1. So then:
+
+x_i = (f∘f∘...∘f)(P) = nP + mQ.
+
+Seems right. In the end we'll have aP + bQ = cP + dQ, Let k = a-c, j =
+d-b. Then, kP = jQ, and (k/j)P = Q. 1/j is j's multiplicative inverse
+in field F_n, where n is a size of E(F_p).
+
+Taking 1/j is easy if g = gcd(j,n) = 1. If it's not the case, we will
+proceed exactly as we did in the original pollard's algorithm.
+
+We want to find 1/k such that j * 1/k * P = Q
+-}
+
+data ECRhoAcc = ECRhoAcc
+    { ecrA :: !Integer
+    , ecrB :: !Integer
+    , ecrC :: !Integer
+    , ecrD :: !Integer
+    } deriving Show
+
+ecRhoFromAcc :: (HasECParams f, Field f) => ECRhoAcc -> EC f -> EC f -> Integer -> Maybe Integer
+ecRhoFromAcc ECRhoAcc{..} p q n =
+    case gcd j n of
+      1 -> Just $ (k * inverse j n) `mod` n
+      -- uj + vn = g
+      -- uj = g (mod n)
+      g -> let d = n `div` g
+               j' = j `mod` d
+               k' = k `mod` d
+               jinv = inverse j' d
+           in
+              --traceShow (n,j,g,d,j',gcd j' d) $
+              if gcd j' d /= 1
+              then Nothing -- I'm not sure what to do.
+              else find (\x -> x `times` p == q) $
+                   map (\i -> k' + jinv + i) [0..]
+  where
+    k = (ecrA - ecrC) `mod` n
+    j = (ecrD - ecrB) `mod` n
+
+ecRhoGo ::
+       forall i. (PrimeNat i, HasECParams (Z i))
+    => EC (Z i)
+    -> EC (Z i)
+    -> Integer
+    -> Maybe Integer
+ecRhoGo p q k =
+    let v = k `times` p
+    in go (1 :: Integer) v v (ECRhoAcc k 0 k 0) -- kudah
+  where
+    go i !x !y !acc
+        | x == y && i > 1 = ecRhoFromAcc acc p q n
+        | otherwise = do
+          --traceShow (i,x,y,acc) $ do
+            let (x', a, b) = f (x, ecrA acc, ecrB acc)
+            let (y', c, d) = f (f (y, ecrC acc, ecrD acc))
+            go (i+1) x' y' (ECRhoAcc a b c d)
+
+    n = ecGroupSize @(Z i)
+
+    inS1 (EC x y) = (x + y) `mod` 3 == 0
+    inS1 _        = False
+    inS2 (EC x y) = (x + y) `mod` 3 == 1
+    inS2 _        = False
+
+    f :: (EC (Z i), Integer, Integer) -> (EC (Z i), Integer, Integer)
+    f (e, a, b)
+        | inS1 e = (e <+> p, (a+1) `mod` n, b)
+        | inS2 e = (e <+> e, (a*2) `mod` n, (b*2) `mod` n)
+        | otherwise = (e <+> q, a, (b+1) `mod` n)
+
+ecRho ::
+       forall i. (PrimeNat i, HasECParams (Z i))
+    => EC (Z i)
+    -> EC (Z i)
+    -> Integer
+ecRho p q = let n = go 1 in if n `times` p == q then n else error "ecRho"
+  where
+    go k = maybe (go $ k+1) identity (ecRhoGo p q k)
+
+-- Inverted data from 6.11
+e613 :: IO ()
+e613 = do
+    let solve :: forall m . (PrimeNat m) => Integer -> Integer -> EC (Z m) -> EC (Z m) -> IO ()
+        solve a b p q =
+            withECParams (ECParams (toZ a) (toZ b) :: ECParams (Z m)) $ do
+                --print $ ecGroupSize @(Z m)
+                let o = ecOrder p
+                print o
+                let d = ecRho p q
+                print d
+                print $ d `mod` o
+    putText "#1"
+    solve @83 23 13 (EC 24 14) (EC 24 69)
+    putText "#2"
+    solve @613 143 367 (EC 195 9) (EC 485 573)
+    putText "#3"
+    solve @1999 1828 1675 (EC 1756 348) (EC 1068 1540)
+    putText "#4"
+    solve @3221 1541 1335 (EC 2898 439) (EC 243 1875)
+
+{-
+Answers are correct, though pollard's method must be optimized.
+λ> e613
+#1
+5
+89
+4
+#2
+189
+212
+23
+#3
+2058
+2069
+11
+#4
+1621
+3211
+1590
 -}

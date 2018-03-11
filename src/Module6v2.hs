@@ -38,7 +38,7 @@ e65 = do
 -- 6.6
 ----------------------------------------------------------------------------
 
-additionTable :: forall f. (HasECParams f, FField f) => Matrix (EC f)
+additionTable :: forall f. (Ord f, HasECParams f, FField f) => Matrix (EC f)
 additionTable = Matrix $ do
     x <- listAllPoints @f
     let l = do y <- listAllPoints @f

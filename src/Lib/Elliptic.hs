@@ -19,10 +19,13 @@ module Lib.Elliptic
        , EC (..)
        , onCurve
        , listAllPoints
+       , ecGroupSize
+       , ecOrder
        ) where
 
 import Universum hiding ((<*>))
 
+import qualified Data.Map as M
 import Data.Reflection (Given (..), give)
 
 import Lib.Field
@@ -77,5 +80,28 @@ instance (Field f, HasECParams f) => AGroup (EC f) where
     fneg = \case EC0 -> EC0
                  (EC a b) -> EC a (fneg b)
 
-listAllPoints :: forall f. (HasECParams f, FField f) => [EC f]
-listAllPoints = EC0 : filter onCurve [EC a b | a <- allElems, b <- allElems]
+-- Linear in group size. Could be better.
+listAllPoints :: forall f. (Ord f, HasECParams f, FField f) => [EC f]
+listAllPoints =
+    EC0 : concatMap toPoints (allElems @f)
+  where
+    ECParams{..} = ecParams
+
+    toPoints :: f -> [EC f]
+    toPoints x = let rhs = x <^> (3 :: Int) <+> ecA <*> x <+> ecB
+                 in map (EC x) $ fromMaybe [] (M.lookup rhs qResidues)
+    qResidues :: Map f [f]
+    qResidues =
+        foldr (\x -> M.alter (Just . (x:) . fromMaybe []) (x <*> x))
+              mempty
+              (allElems @f)
+
+-- This function is VERY slow.
+ecGroupSize :: forall f. (Ord f, HasECParams f, FField f) => Integer
+ecGroupSize = fromIntegral $ length $ listAllPoints @f
+
+ecOrder :: forall f. (Ord f, HasECParams f, FField f) => EC f -> Integer
+ecOrder p0 = go 1 p0
+  where
+    go i p | p == f0 = i
+           | otherwise = go (i+1) (p <+> p0)
