@@ -130,7 +130,7 @@ logD p g h = let ans = logDTrialAndError p g h
                 assert (ans < p) $
                 ans
 
--- | Trial-and-error discrete logarithm solving algorithm
+-- | Solving DLP by trial-and-error.
 logDTrialAndError :: (Integral n) => n -> n -> n -> n
 logDTrialAndError p g h =
     fst $
@@ -138,8 +138,8 @@ logDTrialAndError p g h =
     find ((== h) . snd) $
     map (\x -> (x, exp p g x)) (reverse [0..p-1])
 
--- | Solving log problem with shank algorithm. Requires g to be in set
--- of field units.
+-- | Solving log problem with the shank algorithm. Requires g to be a
+-- unit.
 logDShank :: (Integral n) => n -> n -> n -> n
 logDShank p g h
     | g == h = 1

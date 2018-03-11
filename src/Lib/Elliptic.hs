@@ -18,6 +18,7 @@ module Lib.Elliptic
 
        , EC (..)
        , onCurve
+       , listAllPoints
        ) where
 
 import Universum hiding ((<*>))
@@ -75,3 +76,6 @@ instance (Field f, HasECParams f) => AGroup (EC f) where
     (<+>) = ecPlus
     fneg = \case EC0 -> EC0
                  (EC a b) -> EC a (fneg b)
+
+listAllPoints :: forall f. (HasECParams f, FField f) => [EC f]
+listAllPoints = EC0 : filter onCurve [EC a b | a <- allElems, b <- allElems]

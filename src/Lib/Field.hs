@@ -73,8 +73,17 @@ infixl 5 <->
 (<->) a b = a <+> (fneg b)
 
 infixl 6 `times`
-times :: (Integral n, AGroup a) => n -> a -> a
-times (fromIntegral -> n) a = foldl' (<+>) f0 $ replicate n a
+times :: forall n a. (Integral n, AGroup a) => n -> a -> a
+times (fromIntegral -> n0) a = tms n0
+  where
+    tms :: Integer -> a
+    tms 0 = f0
+    tms 1 = a
+    tms n = do
+        let (ndiv,nmod) = n `divMod` 2
+        let nnext = tms ndiv
+        if | nmod == 0 -> nnext <+> nnext
+           | otherwise -> nnext <+> nnext <+> a
 
 infixl 7 <^>
 (<^>) :: (Integral n, Ring a) => a -> n -> a
@@ -164,22 +173,29 @@ toZ i = Z $ i `mod` (natValI @n)
 
 class KnownNat n => PrimeNat (n :: Nat)
 
--- Too lazy to define it in any other way
-#define GenZ(N) \
-  instance PrimeNat N;\
+-- Sadly, I do not know a better way to solve this problem.  It'd be
+-- nice if GHC ran primality test every time he was checking the
+-- instance. I think I could at least use TH to pre-generate first k
+-- primes. Also if this is tedious to use, one can just define
+-- "instance KnownNat n => PrimeNat n" and forget about this check.
+#define DefPrime(N) instance PrimeNat N;\
 
-GenZ(2)
-GenZ(3)
-GenZ(4)
-GenZ(5)
-GenZ(6)
-GenZ(7)
-GenZ(8)
-GenZ(9)
-GenZ(11)
-GenZ(13)
-GenZ(17)
-GenZ(9539)
+DefPrime(2)
+DefPrime(3)
+DefPrime(4)
+DefPrime(5)
+DefPrime(6)
+DefPrime(7)
+DefPrime(8)
+DefPrime(9)
+DefPrime(11)
+DefPrime(13)
+DefPrime(17)
+DefPrime(83)
+DefPrime(613)
+DefPrime(1999)
+DefPrime(3221)
+DefPrime(9539)
 
 instance (KnownNat n) => AGroup (Z n) where
     f0 = Z 0

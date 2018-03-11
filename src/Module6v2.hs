@@ -13,9 +13,6 @@ import Lib.Field
 -- 6.5
 ----------------------------------------------------------------------------
 
-listAllPoints :: forall f. (HasECParams f, FField f) => [EC f]
-listAllPoints = EC0 : filter onCurve [EC a b | a <- allElems, b <- allElems]
-
 e65 :: IO ()
 e65 = do
     let solve :: forall n. PrimeNat n => (Integer,Integer) -> IO ()
