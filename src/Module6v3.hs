@@ -4,20 +4,22 @@
 
 module Module6v3 () where
 
-import System.Random
 import Universum
+
+import Data.List ((!!))
+import System.Random
 
 import Lib.Elliptic
 import Lib.Field
-import Lib.Misc (inverse)
+import Lib.Misc (exEucl, inverse)
 
 ----------------------------------------------------------------------------
 -- 6.8
 ----------------------------------------------------------------------------
 
--- | Solves DLP Q = nP by trial-end-error.
+-- | Solves DLP nP = Q by trial-end-error.
 ecdlpTrialAndError :: (FField f, HasECParams f) => EC f -> EC f -> Integer
-ecdlpTrialAndError q p =
+ecdlpTrialAndError p q =
     fst $
     fromMaybe (error "ecdlpTrialAndError") $
     find ((== q) . snd) $
@@ -28,7 +30,7 @@ e68 =
     withECParams (ECParams (toZ 1) (toZ 1) :: ECParams (Z 5)) $ do
         let p = EC 4 2
         let q = EC 0 1
-        print $ ecdlpTrialAndError @(Z 5) q p
+        print $ ecdlpTrialAndError @(Z 5) p q
         -- It's 5
 
 ----------------------------------------------------------------------------
@@ -47,9 +49,17 @@ follows from scalar multiplication definition.
 ----------------------------------------------------------------------------
 
 {-
-You either take P1 = P2 or one of them equal to zero. In second case,
-the solution is just ready; in the first case, n1+n2 should be reduced
-modulo s.
+Let's assume we can solve the basis problem for {P1, P2}.
+
+Applied to kP = Q, P = n1P1 + n2P2, Q = m1P1 + m2P2:
+
+k(n1P1 + n2P2) = m1P1 + m2P2
+(m1 - k*n1) P1 + (m2 - k*n2) P2 = 0
+
+Since P1 and P2 are basis, their coefficients must be zero, otherwise
+they're linearly dependent.
+
+So just solve m1 - k*n1 = 0 in the same way it's done in pollard.
 -}
 
 ----------------------------------------------------------------------------
@@ -118,7 +128,7 @@ testExpand = replicateM_ 1000 $ do
     let r1 = interpretTern e
     when (r1 /= r) $ error "kek"
 
-ectimes :: forall f. (HasECParams f, FField f) => Integer -> EC f -> EC f
+ectimes :: forall f. (HasECParams f, Field f) => Integer -> EC f -> EC f
 ectimes n0 p0 =
     snd $ foldl (\(p,v) i -> (p<+>p, case i of
                                        0    -> v
@@ -163,10 +173,19 @@ Seems right. In the end we'll have aP + bQ = cP + dQ, Let k = a-c, j =
 d-b. Then, kP = jQ, and (k/j)P = Q. 1/j is j's multiplicative inverse
 in field F_n, where n is a size of E(F_p).
 
-Taking 1/j is easy if g = gcd(j,n) = 1. If it's not the case, we will
+Taking 1/j is easy if d = gcd(j,n) = 1. If it's not the case, we will
 proceed exactly as we did in the original pollard's algorithm.
 
-We want to find 1/k such that j * 1/k * P = Q
+kP = jQ, so j * log_P(Q) = k (mod n), where n is order of the group
+
+uj = d (mod n)
+
+d * log_P(Q) = ku (mod n)
+log_P(Q) = ku/d (mod n)
+then k*u/d + i(n/d) is a set of soltuions, i ∈ 0..d-1
+
+Important notice: it only works if P is generator. This limitation is
+easy to overcome, but it's not done here.
 -}
 
 data ECRhoAcc = ECRhoAcc
@@ -176,22 +195,18 @@ data ECRhoAcc = ECRhoAcc
     , ecrD :: !Integer
     } deriving Show
 
-ecRhoFromAcc :: (HasECParams f, Field f) => ECRhoAcc -> EC f -> EC f -> Integer -> Maybe Integer
-ecRhoFromAcc ECRhoAcc{..} p q n =
-    case gcd j n of
-      1 -> Just $ (k * inverse j n) `mod` n
-      -- uj + vn = g
-      -- uj = g (mod n)
-      g -> let d = n `div` g
-               j' = j `mod` d
-               k' = k `mod` d
-               jinv = inverse j' d
-           in
-              --traceShow (n,j,g,d,j',gcd j' d) $
-              if gcd j' d /= 1
-              then Nothing -- I'm not sure what to do.
-              else find (\x -> x `times` p == q) $
-                   map (\i -> k' + jinv + i) [0..]
+ecRhoFromAcc :: (HasECParams f, Field f,Show f) => ECRhoAcc -> EC f -> EC f -> Integer -> Integer
+ecRhoFromAcc ECRhoAcc{..} p q n
+    | k `times` p /= j `times` q = error "ecRhoFromAcc: wrong args"
+    | otherwise =
+     case exEucl j n of
+      (1,_,_) -> (k * inverse j n) `mod` n
+      (d,((`mod` n) -> u),_) ->
+          let n' = n `div` d
+              w = (k * u) `mod` n
+          in fromMaybe (error "ecRhoFromAcc: P is not a generator") $
+             head $
+             filter (\x -> x `times` p == q) [w `div` d + i * n' | i <- [0..d-1]]
   where
     k = (ecrA - ecrC) `mod` n
     j = (ecrD - ecrB) `mod` n
@@ -201,7 +216,7 @@ ecRhoGo ::
     => EC (Z i)
     -> EC (Z i)
     -> Integer
-    -> Maybe Integer
+    -> Integer
 ecRhoGo p q k =
     let v = k `times` p
     in go (1 :: Integer) v v (ECRhoAcc k 0 k 0) -- kudah
@@ -209,7 +224,7 @@ ecRhoGo p q k =
     go i !x !y !acc
         | x == y && i > 1 = ecRhoFromAcc acc p q n
         | otherwise = do
-          --traceShow (i,x,y,acc) $ do
+--            traceShow (i,x,y,acc) $ do
             let (x', a, b) = f (x, ecrA acc, ecrB acc)
             let (y', c, d) = f (f (y, ecrC acc, ecrD acc))
             go (i+1) x' y' (ECRhoAcc a b c d)
@@ -220,6 +235,15 @@ ecRhoGo p q k =
     inS1 _        = False
     inS2 (EC x y) = (x + y) `mod` 3 == 1
     inS2 _        = False
+
+{-
+    m :: Z i
+    m = toZ $ getFieldSize (Proxy @(Z i))
+    inS1 (EC x _) = x < (m `div` 3)
+    inS1 _        = False
+    inS2 (EC x _) = x < ((m `div` 3) * 2)
+    inS2 _        = False
+-}
 
     f :: (EC (Z i), Integer, Integer) -> (EC (Z i), Integer, Integer)
     f (e, a, b)
@@ -234,46 +258,29 @@ ecRho ::
     -> Integer
 ecRho p q = let n = go 1 in if n `times` p == q then n else error "ecRho"
   where
-    go k = maybe (go $ k+1) identity (ecRhoGo p q k)
+    go k = ecRhoGo p q k
 
 -- Inverted data from 6.11
 e613 :: IO ()
 e613 = do
-    let solve :: forall m . (PrimeNat m) => Integer -> Integer -> EC (Z m) -> EC (Z m) -> IO ()
-        solve a b p q =
+    let test :: forall m . (PrimeNat m) => Integer -> Integer -> IO ()
+        test a b =
             withECParams (ECParams (toZ a) (toZ b) :: ECParams (Z m)) $ do
-                --print $ ecGroupSize @(Z m)
-                let o = ecOrder p
-                print o
-                let d = ecRho p q
-                print d
-                print $ d `mod` o
+                let groupSize = ecGroupSize @(Z m)
+                let isGen (x :: EC (Z m)) = ecOrder x == groupSize
+                let generators = filter isGen listAllPoints
+                replicateM_ 10 $ do
+                    !p <- (cycle generators !!) <$> randomRIO (5,15)
+                    n <- randomRIO (1,groupSize)
+                    let q = n `times` p
+                    unless (ecOrder p == ecGroupSize @(Z m)) $ error "e613: P is not gen"
+                    let sol = ecRho p q
+                    unless (sol `times` p == q) $ error "e613 failed"
     putText "#1"
-    solve @83 23 13 (EC 24 14) (EC 24 69)
+    test @83 23 13
     putText "#2"
-    solve @613 143 367 (EC 195 9) (EC 485 573)
+    test @613 143 367
     putText "#3"
-    solve @1999 1828 1675 (EC 1756 348) (EC 1068 1540)
+    test @1999 1828 1675
     putText "#4"
-    solve @3221 1541 1335 (EC 2898 439) (EC 243 1875)
-
-{-
-Answers are correct, though pollard's method must be optimized.
-λ> e613
-#1
-5
-89
-4
-#2
-189
-212
-23
-#3
-2058
-2069
-11
-#4
-1621
-3211
-1590
--}
+    test @3221 1541 1335
