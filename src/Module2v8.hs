@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -fno-warn-unused-top-binds #-}
 
-module Module2v8 () where
+module Module2v8 (sqrtPN) where
 
 import Control.Monad (guard)
 import Data.List (nub)

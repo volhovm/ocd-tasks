@@ -195,6 +195,7 @@ DefPrime(83)
 DefPrime(613)
 DefPrime(1999)
 DefPrime(3221)
+DefPrime(2671)
 DefPrime(9539)
 
 instance (KnownNat n) => AGroup (Z n) where
