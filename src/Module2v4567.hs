@@ -54,7 +54,16 @@ g^ka which is c₁^a then inverted to decrypt m.
 
 ------ 2.10
 
--- :(
+{-
+(a) Eventually, we have something like m^{abcd} = m, so abcd = 1 (mod p-1).
+Alice knows only a, so c must be a^(-1) mod (p-1). Same for Bob.
+
+(b) Done in (a), obvious.
+(c) Two exchange rounds
+(d) If Eve can break DLP, then she can figure out b from v = u^b, since
+u and v are known. I don't see a way for it to be cracked if Eve can
+solve DH.
+-}
 
 ------ 2.11-2.16 DONE ON PAPER
 
