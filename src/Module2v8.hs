@@ -4,7 +4,7 @@ module Module2v8 (sqrtPN) where
 
 import Control.Monad (guard)
 import Data.List (nub)
-import Data.Maybe (catMaybes, isJust)
+import Data.Maybe (catMaybes, fromMaybe, isJust)
 import Data.Numbers.Primes (primeFactors)
 import Debug.Trace
 import Prelude hiding (exp)
@@ -60,8 +60,8 @@ sqrtP p a0 = do
     a = a0 `mod` p
     b = exp p a $ (p + 1) `div` 4
 
-sqrtPN :: Integer -> Integer -> Maybe [Integer]
-sqrtPN n a = do
+sqrtPN :: Integer -> Integer -> [Integer]
+sqrtPN n a = fromMaybe [] $ do
     --traceShowM ps
     --traceShowM squares
     --traceShowM permutations
@@ -81,15 +81,15 @@ sqrtPN n a = do
 
 {-
 λ> sqrtPN 437 340
-Just [215,291,146,222]
+[215,291,146,222]
 λ> sqrtPN 3143 253
-Just [1387,2654,489,1756]
+[1387,2654,489,1756]
 λ> sqrtPN 4189 2833
-Just [1712,3187,1002,2477]
+[1712,3187,1002,2477]
 λ> sqrtPN 868 813
-Just [351,393,41,83,351,393,41,83,351,393,41,83,351,393,41,83]
+[351,393,41,83,351,393,41,83,351,393,41,83,351,393,41,83]
 λ> nub <$> sqrtPN 868 813
-Just [351,393,41,83]
+[351,393,41,83]
 -- well, only four -- this can be explained
 λ> primeFactors 868
 [2,2,7,31]
