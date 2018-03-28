@@ -77,10 +77,11 @@ mod p.
 
 e616 :: IO ()
 e616 = withECParams (ECParams (toZ 54) (toZ 87) :: ECParams (Z 1123)) $ do
-    let xa = toZ 287 :: Z 1123
+    let xa = toZ 278 :: Z 1123
     let ECParams{..} = ecParams
     let yasq = xa <^> (3 :: Int) <+> ecA <*> xa <+> ecB
-    print $ sqrtPN 1123 (unZ yasq)
+    let sols = sqrtPN 1123 (unZ yasq)
+    print sols
 
 {-
 (a) We compute s = x^3 + ax + b and then take a square root of s. The key point
@@ -90,9 +91,9 @@ to send 1 bit, following the given rules.
 
 (b)
 λ> e616
-Just [252,871]
+[487,636]
 
-He'll send 0 to denote 252 and 1 to denote 871. Sanity check: the sum
+He'll send 0 to denote 487 and 1 to denote 636. Sanity check: the sum
 of these numbers is 1123.
 -}
 

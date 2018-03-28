@@ -2,7 +2,10 @@
 
 -- | ECDLP.
 
-module Module6v3 (ecRho) where
+module Module6v3
+       ( ecRho
+       , ternExpand
+       ) where
 
 import Universum
 

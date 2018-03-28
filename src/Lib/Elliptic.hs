@@ -17,6 +17,7 @@ module Lib.Elliptic
        , ecParams
 
        , EC (..)
+       , ECZ
        , onCurve
        , listAllPoints
        , ecGroupSize
@@ -53,6 +54,9 @@ ecParams = given
 -- | A point on the elliptic curve y^2 = x^2 + ax + b over a finite
 -- field x.
 data EC f = EC f f | EC0 deriving (Eq,Show)
+
+-- | EC over finite field of integers.
+type ECZ n = EC (Z n)
 
 onCurve :: (HasECParams f, Ring f) => EC f -> Bool
 onCurve EC0      = False
@@ -96,7 +100,7 @@ listAllPoints =
               mempty
               (allElems @f)
 
--- This function is VERY slow.
+-- This function is slow.
 ecGroupSize :: forall f. (Ord f, HasECParams f, FField f) => Integer
 ecGroupSize = fromIntegral $ length $ listAllPoints @f
 
