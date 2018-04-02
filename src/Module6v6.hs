@@ -22,7 +22,6 @@ ecPlus x EC0 = Right x
 ecPlus p1@(EC x1 y1) p2@(EC x2 y2)
     | x1 == x2 && y1 == (fneg y2) = Right EC0
     | otherwise = do
-      let tm (x :: Int) = times x
       let ECParams {..} = ecParams
       let inv :: Z n -> Either (Z n) (Z n)
           inv (Z i) = let m = fromIntegral (natVal (Proxy @n))
@@ -31,9 +30,9 @@ ecPlus p1@(EC x1 y1) p2@(EC x2 y2)
                          then Right (Z $ u `mod` m)
                          else Left (Z gcd')
       λ <- if p1 == p2
-           then (<*>) (3 `tm` (x1 <^> (2::Int)) <+> ecA) <$> inv (2 `tm` y1)
+           then (<*>) (3 `times` (x1 <^> 2) <+> ecA) <$> inv (2 `times` y1)
            else (<*>) (y2 <-> y1) <$> inv (x2 <-> x1)
-      let (x3 :: (Z n)) = λ <^> (2::Int) <-> x1 <-> x2
+      let (x3 :: (Z n)) = λ <^> 2 <-> x1 <-> x2
       let (y3 :: (Z n)) = λ <*> (x1 <-> x3) <-> y1
       pure $ EC x3 y3
 

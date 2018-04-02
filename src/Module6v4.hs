@@ -33,7 +33,7 @@ e614 = withECParams (ECParams (toZ 171) (toZ 853) :: ECParams (Z 2671)) $ do
     -- d
     let xa = toZ 2 :: Z 2671
     let ECParams{..} = ecParams
-    let yasq = xa <^> (3 :: Int) <+> ecA <*> xa <+> ecB
+    let yasq = xa <^> 3 <+> ecA <*> xa <+> ecB
     let (ya:_) = sqrts yasq
     let qa2 = EC xa ya
     putText $ "(d) Q_a: " <> show qa2
@@ -79,7 +79,7 @@ e616 :: IO ()
 e616 = withECParams (ECParams (toZ 54) (toZ 87) :: ECParams (Z 1123)) $ do
     let xa = toZ 278 :: Z 1123
     let ECParams{..} = ecParams
-    let yasq = xa <^> (3 :: Int) <+> ecA <*> xa <+> ecB
+    let yasq = xa <^> 3 <+> ecA <*> xa <+> ecB
     let sols = sqrtPN 1123 (unZ yasq)
     print sols
 
@@ -206,7 +206,7 @@ ecdsaSign ::
     -> Z q
     -> (Z q, Z q)
 ecdsaSign g s d e =
-    let eg = e `times` g
+    let eg = unZ e `times` g
         s1 :: Z q = let EC x _ = eg in toZ (unZ x)
         s2 :: Z q = (d <+> s <*> s1) <*> finv e
     in (s1, s2)
@@ -219,8 +219,8 @@ ecdsaVerify ::
     -> Z q
     -> Bool
 ecdsaVerify g v (s1,s2) d =
-    let v1 = d <*> finv s2
-        v2 = s1 <*> finv s2
+    let v1 = unZ $ d <*> finv s2
+        v2 = unZ $ s1 <*> finv s2
         t :: EC (Z p) = v1 `times` g <+> v2 `times` v
         xfin :: Z q = let EC x _ = t in toZ (unZ x)
     in xfin == s1
@@ -232,7 +232,7 @@ e620 = withECParams (ECParams (toZ 231) (toZ 473) :: ECParams (Z 17389)) $ do
     unless (ecOrder g == q) $ error "order of g is not q"
 
     let s = toZ 542 :: Z 1321
-    let qa = s `times` g
+    let qa = unZ s `times` g
     print qa
 
     print $ ecdsaSign g s 644 847

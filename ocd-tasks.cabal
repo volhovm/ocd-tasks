@@ -13,6 +13,7 @@ library
                      , Lib.Field
                      , Lib.Misc
                      , Lib.Elliptic
+                     , Lib.EllipticFull
 
                      , Module1v1
                      , Module1v2

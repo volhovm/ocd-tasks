@@ -20,8 +20,8 @@ e61 = withECParams (ECParams (-2) 4 :: ECParams Double) $ do
     print $ p <+> q
     print $ p <+> p
     print $ q <+> q
-    print $ (3 :: Int) `times` p
-    print $ (3 :: Int) `times` q
+    print $ 3 `times` p
+    print $ 3 `times` q
 
 {-
 λ> ex61
@@ -44,8 +44,8 @@ e62 = withECParams (ECParams 0 17 :: ECParams Double) $ do
     print $ onCurve q
     print $ p <+> q
     print $ p <-> q
-    print $ (2 :: Int) `times` p
-    print $ (2 :: Int) `times` q
+    print $ 2 `times` p
+    print $ 2 `times` q
     putText "bonus: 4 pairs of solutions"
 
 {-

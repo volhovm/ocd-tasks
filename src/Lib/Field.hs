@@ -73,8 +73,8 @@ infixl 5 <->
 (<->) a b = a <+> (fneg b)
 
 infixl 6 `times`
-times :: forall n a. (Integral n, AGroup a) => n -> a -> a
-times (fromIntegral -> n0) a = tms n0
+times :: forall a. (AGroup a) => Integer -> a -> a
+times n0 a = tms n0
   where
     tms :: Integer -> a
     tms 0 = f0
@@ -86,8 +86,8 @@ times (fromIntegral -> n0) a = tms n0
            | otherwise -> nnext <+> nnext <+> a
 
 infixl 7 <^>
-(<^>) :: (Integral n, Ring a) => a -> n -> a
-(<^>) a (fromIntegral -> n) = foldl' (<*>) f1 $ replicate n a
+(<^>) :: Ring a => a -> Integer -> a
+(<^>) a n = foldl' (<*>) f1 $ replicate (fromIntegral n) a
 
 -- | Fast powering algorithm for calculating a^p (mod p).
 fastExp :: forall a n . (Ring a, Integral n) => a -> n -> a
@@ -235,7 +235,7 @@ instance (PrimeNat n) => FField (Z n) where
 
 -- | Empty polynomial is equivalent to [0]. Big endian (head is higher
 -- degree coefficient).
-newtype Poly a = Poly [a] deriving (Functor)
+newtype Poly a = Poly [a] deriving (Functor,Ord)
 
 instance Show a => Show (Poly a) where
     show (Poly l) = "Poly " ++ show l
@@ -382,7 +382,7 @@ getCoeffPoly :: forall p n. (KnownNat p, KnownNat n) => Poly (Z n)
 getCoeffPoly = map toZ (reflectCoeffPoly @p @n)
 
 -- Empty polynomial is equivalent for [0]. Head -- higher degree.
-newtype FinPoly (p :: Nat) a = FinPoly (Poly a) deriving Eq
+newtype FinPoly (p :: Nat) a = FinPoly (Poly a) deriving (Eq,Ord)
 
 instance (Show a) => Show (FinPoly p a) where
     show (FinPoly x) = "Fin" <> show x
@@ -434,6 +434,8 @@ instance PrimePoly 19 2
 -- 67 = x^6 + x + 1 is prime poly over F_2
 instance PrimePoly 67 2
 -- 75 = x^6 + x^3 + x + 1 is NOT prime
+-- 11 = x^3 + x + 1 is prime poly over F_2
+instance PrimePoly 11 2
 
 instance (PrimePoly p n) => Field (FinPoly p (Z n)) where
     finv (FinPoly f) =
@@ -453,7 +455,7 @@ _testFinPolys = do
     let pPoly = [1,0,0,1,1]
     let pEnc = representBack 2 pPoly
     let (x :: FinPoly 19 (Z 2)) = mkFinPoly (Poly [1,0])
-    let z = x <^> (12 :: Int)
+    let z = x <^> 12
     let y = finv z
     print pEnc
     print $ z

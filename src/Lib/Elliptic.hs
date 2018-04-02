@@ -6,7 +6,7 @@
 {-# LANGUAGE TypeInType     #-}
 {-# LANGUAGE TypeOperators  #-}
 
--- | Elliptic curves over finite groups.
+-- | Elliptic curves (simple weierstrass form) over (finite) groups.
 
 module Lib.Elliptic
        (
@@ -38,8 +38,8 @@ data ECParams f = ECParams { ecA :: f, ecB :: f }
 
 checkECParams :: Ring f => ECParams f -> Bool
 checkECParams ECParams{..} =
-    (4 :: Int) `times` (ecA <^> (3 :: Int)) <+>
-    (27 :: Int) `times` (ecB <^> (2 :: Int))
+    4 `times` (ecA <^> 3) <+>
+    27 `times` (ecB <^> 2)
     /= f0
 
 type HasECParams f = Given (ECParams f)
@@ -51,18 +51,17 @@ ecParams :: HasECParams f => ECParams f
 ecParams = given
 
 
--- | A point on the elliptic curve y^2 = x^2 + ax + b over a finite
--- field x.
+-- | A point on the elliptic curve y^2 = x^2 + ax + b over a field f.
 data EC f = EC f f | EC0 deriving (Eq,Show)
 
 -- | EC over finite field of integers.
 type ECZ n = EC (Z n)
 
 onCurve :: (HasECParams f, Ring f) => EC f -> Bool
-onCurve EC0      = False
+onCurve EC0      = True
 onCurve (EC x y) =
     let ECParams{..} = ecParams
-    in y <^> (2 :: Int) == x <^> (3 :: Int) <+> ecA <*> x <+> ecB
+    in y <^> 2 == x <^> 3 <+> ecA <*> x <+> ecB
 
 ecPlus :: forall f. (HasECParams f, Field f) => EC f -> EC f -> EC f
 ecPlus EC0 x = x
@@ -71,10 +70,10 @@ ecPlus p1@(EC x1 y1) p2@(EC x2 y2)
     | x1 == x2 && y1 == (fneg y2) = EC0
     | otherwise = EC x3 y3
   where
-    tm (x :: Int) = times x
-    (x3 :: f) = λ <^> (2::Int) <-> x1 <-> x2
+    tm x = times x
+    (x3 :: f) = λ <^> 2 <-> x1 <-> x2
     (y3 :: f) = λ <*> (x1 <-> x3) <-> y1
-    λ = if p1 == p2 then (3 `tm` (x1 <^> (2::Int)) <+> ecA) <*> finv (2 `tm` y1)
+    λ = if p1 == p2 then (3 `tm` (x1 <^> 2) <+> ecA) <*> finv (2 `tm` y1)
                     else (y2 <-> y1) <*> finv (x2 <-> x1)
     ECParams {..} = ecParams
 
@@ -92,7 +91,7 @@ listAllPoints =
     ECParams{..} = ecParams
 
     toPoints :: f -> [EC f]
-    toPoints x = let rhs = x <^> (3 :: Int) <+> ecA <*> x <+> ecB
+    toPoints x = let rhs = x <^> 3 <+> ecA <*> x <+> ecB
                  in map (EC x) $ fromMaybe [] (M.lookup rhs qResidues)
     qResidues :: Map f [f]
     qResidues =
