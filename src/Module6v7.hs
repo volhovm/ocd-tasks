@@ -80,24 +80,43 @@ e623 :: IO ()
 e623 = do
     let mkp = mkFinPoly . Poly
     let params :: ECParams E623F
-        params = ECParams f1 f1 f1 (mkp [1,0]) (mkp [1,1])
+        params = ECParams f1 f0 f1 (mkp [1,0]) (mkp [1,1])
     withECParams params $ do
-        print $ discriminant params
+        print $ 2 `times` (mkp [1,0]) <+> (mkp [1])
+        putText $ "Discriminant: " <> show (discriminant params)
         let (p :: EC E623F) = EC (mkp [1,1,1]) (mkp [1,1])
         let q = EC (mkp [1,0,0]) (mkp [1,0])
-        let (r :: EC E623F) = EC (mkp [1,1,1]) (mkp [1,0,1])
-        print $ p <+> q
-        print $ 2 `times` r
-        print $ listAllPointsSlow @E623F
-        print $ getGen @E623F
+        let r = EC (mkp [1,1,1]) (mkp [1,0,1])
+        putText $ "onCurve: " <> show (map onCurve [p,q,r])
+        putText $ "p+q: " <> show (p <+> q)
+        putText $ "2r: " <> show (2 `times` r)
+        let allP = listAllPointsSlow @E623F
+        putText $ "allPoints: " <> show allP
+        let gen = findGenerator (<+>) allP
+        putText $ "generator: " <> show gen
+
+        -- testing that addition works as expected
+        forM_ [(x,y) | x <- allP, y <- allP] $ \(x,y) -> do
+            let s = x <+> y
+            unless (onCurve s) $ error $ "not on curve: " <> show s
+            unless (s `elem` allP) $ error $ "not in allP: " <> show s
+
 
 
 {-
-FinPoly [1,0,0]
-EC FinPoly [1,1,0] FinPoly [1,0]
-EC FinPoly [1,0,1] FinPoly [1,0,0]
-[EC0,EC FinPoly [1] FinPoly [1],EC FinPoly [1,0] FinPoly [0],EC FinPoly [1,0] FinPoly [1,1],EC FinPoly [1,1,0] FinPoly [1,0],EC FinPoly [1,1,0] FinPoly [1,0,1],EC FinPoly [1,1,1] FinPoly [1],EC FinPoly [1,1,1] FinPoly [1,1,1]]
-FinPoly [1,0]
+λ> e623
+Discriminant: FinPoly [1,0,1]
+onCurve: [True,True,True]
+p+q: EC FinPoly [1,1,1] FinPoly [1,0,1]
+2r: EC FinPoly [1,0,0] FinPoly [1,0]
+allPoints:
+[EC0,
+EC FinPoly [1] FinPoly [0],
+EC FinPoly [1,0,0] FinPoly [1,0],
+EC FinPoly [1,0,0] FinPoly [1,1,1],
+EC FinPoly [1,1,1] FinPoly [1,1],
+EC FinPoly [1,1,1] FinPoly [1,0,1]]
+generator: EC FinPoly [1,1,1] FinPoly [1,1]
 -}
 
 ----------------------------------------------------------------------------
@@ -163,8 +182,8 @@ Then formula is:
 -}
 
 -- worked terribly slow without memoization
-e625 :: Integer -> Integer
-e625 k0 = fst $ runState (go k0) (M.empty :: Map Integer Integer)
+frobTrace :: Integer -> Integer
+frobTrace k0 = fst $ runState (go k0) (M.empty :: Map Integer Integer)
   where
     retrieve :: Integer -> State (Map Integer Integer) Integer
     retrieve x = use (at x) >>= \case
@@ -179,14 +198,17 @@ e625 k0 = fst $ runState (go k0) (M.empty :: Map Integer Integer)
         b <- retrieve (k-2)
         pure $ - a - 2 * b
 
+e625 :: Integer -> Integer
+e625 k = 2 ^ k + 1 - frobTrace k
+
 {-
 (c)(d)
 λ> map e625 [4,11,31,101]
-[1,-67,-90707,2969292210605269]
+[16,2116,2147574356,2535301200456455833701195805484]
 
 And indeed, as in example after formula (6.12)
 
-λ> 2^97 + 1 - (e625 97)
+λ> 2^97 + 1 - (frobTrace 97)
 158456325028528296935114828764
 -}
 
@@ -237,11 +259,14 @@ tauExp n = go n 0
     go n0 n1
         | n0 == 0 && n1 == 0 = []
         | otherwise =
-          let vi = if odd n0
-                   then 2 - ((n0 - 2 * n1) `mod` 4)
+          let si = (n0 - 2 * n1)
+              vi = if odd n0
+                   then 2 - (si `mod` 4)
                    else 0
               n0' = n0 - vi
-          in vi : go (n1 - n0' `div` 2) (- n0' `div` 2)
+          in
+           -- traceShow (n0,n1,si) $
+            vi : go (n1 - n0' `div` 2) (- n0' `div` 2)
 
 {-
 
@@ -252,5 +277,8 @@ tauExp n = go n 0
 
 λ> map (length . tauExp) [931, 32755, 82793729188]
 [22,32,74]
+
+λ> map (length . filter (/= f0) . tauExp) [931, 32755, 82793729188]
+[7,11,24]
 
 -}

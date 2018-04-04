@@ -40,20 +40,21 @@ data ECParams f = ECParams
     , ecA6 :: f
     }
 
-discriminant :: Ring f => ECParams f -> f
+discriminant :: (Ring f) => ECParams f -> f
 discriminant ECParams{..} = do
-    let b2 = ecA1 <*> ecA1 <+> 4 `times` ecA2
-    let b4 = 2 `times` ecA4 <+> ecA1 <*> ecA3
-    let b6 = ecA3 <^> 2 <+> 4 `times` ecA6
+    let b2 = (ecA1 <^> 2) <+> 4 `times` ecA2
+    let b4 = (2 `times` ecA4) <+> ecA1 <*> ecA3
+    let b6 = (ecA3 <^> 2) <+> (4 `times` ecA6)
     let b8 = (ecA1 <^> 2) <*> ecA6 <+>
              (4 `times` (ecA2 <*> ecA6)) <->
              ecA1 <*> ecA3 <*> ecA4 <+>
              ecA2 <*> (ecA3 <^> 2) <->
              ecA4 <^> 2
-    9 `times` b2 <*> b4 <*> b6 <->
-        (b2 <^> 2) <*> b8 <->
-        8 `times` (b4 <^> 2) <->
-        27 `times` (b6 <^> 2)
+    let d = (9 `times` b2 <*> b4 <*> b6) <->
+            (b2 <^> 2) <*> b8 <->
+            8 `times` (b4 <^> 2) <->
+            27 `times` (b6 <^> 2)
+    d
 
 checkECParams :: Ring f => ECParams f -> Bool
 checkECParams p = discriminant p /= f0
@@ -61,7 +62,7 @@ checkECParams p = discriminant p /= f0
 type HasECParams f = Given (ECParams f)
 
 withECParams :: (Ring f) => ECParams f -> (HasECParams f => r) -> r
-withECParams p f = if checkECParams p then give p f else error "wrong params"
+withECParams p f = give p f -- if checkECParams p then give p f else error "wrong params"
 
 ecParams :: HasECParams f => ECParams f
 ecParams = given
@@ -72,12 +73,13 @@ data EC f = EC f f | EC0 deriving (Eq,Show)
 -- | EC over finite field of integers.
 type ECZ n = EC (Z n)
 
-onCurve :: (HasECParams f, Ring f) => EC f -> Bool
+onCurve :: (HasECParams f, Ring f, Show f) => EC f -> Bool
 onCurve EC0      = True
 onCurve (EC x y) =
     let ECParams{..} = ecParams
-    in y <^> 2 <+> ecA1 <*> x <*> y <+> ecA3 <*> y ==
-       x <^> 3 <+> ecA2 <*> (x <^> 2) <+> ecA4 <*> x <+> ecA6
+        l = (y <^> 2) <+> ecA1 <*> x <*> y <+> ecA3 <*> y
+        r = (x <^> 3) <+> ecA2 <*> (x <^> 2) <+> ecA4 <*> x <+> ecA6
+    in l == r
 
 neg :: (HasECParams f, Field f) => EC f -> EC f
 neg EC0      = EC0
@@ -108,11 +110,11 @@ instance (Field f, HasECParams f) => AGroup (EC f) where
 
 -- | This is quadratic. I'm not sure how to simply implement it in
 -- linear time.
-listAllPointsSlow :: forall f. (Ord f, HasECParams f, FField f) => [EC f]
+listAllPointsSlow :: forall f. (Ord f, Show f, HasECParams f, FField f) => [EC f]
 listAllPointsSlow = EC0 : filter onCurve [EC x y | x <- allElems, y <- allElems]
 
 -- This function is slow.
-ecGroupSize :: forall f. (Ord f, HasECParams f, FField f) => Integer
+ecGroupSize :: forall f. (Ord f, HasECParams f, Show f, FField f) => Integer
 ecGroupSize = fromIntegral $ length $ listAllPointsSlow @f
 
 ecOrder :: forall f. (Ord f, HasECParams f, FField f) => EC f -> Integer

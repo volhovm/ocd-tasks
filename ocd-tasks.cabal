@@ -55,6 +55,7 @@ library
                      , containers >= 0.5.7.1
                      , easyplot >= 1.0
                      , lens >= 4.14
+                     , mtl
                      , primes >=0.2
                      , random >= 1.1
                      , reflection

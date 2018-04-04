@@ -21,6 +21,7 @@ module Lib.Field
     , eDiv
     , eMod
 
+    , findGenerator
     , gcdEucl
 
     , Z (..)
@@ -46,7 +47,7 @@ import qualified Prelude
 import Universum hiding (head, (<*>))
 
 import Control.Lens (ix, (%=), (.=))
-import Data.List (head, last, nub, (!!))
+import Data.List (head, last, (!!))
 import qualified Data.List as L
 
 ----------------------------------------------------------------------------
@@ -84,6 +85,18 @@ times n0 a = tms n0
         let nnext = tms ndiv
         if | nmod == 0 -> nnext <+> nnext
            | otherwise -> nnext <+> nnext <+> a
+
+-- | Searchs for the generator given op and list of elements to
+-- produce (also to choose from). For multiplicative group it should
+-- be used with (<*>) and (allElems \\ f0), since 0 is not produced.
+findGenerator :: forall a. (Eq a) => (a -> a -> a) -> [a] -> a
+findGenerator op elems =
+    fromMaybe (error $ "findGenerator: didn't manage to") $
+    find (\g -> let s = genOrderSet [] g g in length s == n) elems
+  where
+    n = length elems
+    genOrderSet acc g0 g | g `elem` acc = acc
+                         | otherwise = genOrderSet (g:acc) g0 (g `op` g0)
 
 infixl 7 <^>
 (<^>) :: Ring a => a -> Integer -> a
@@ -125,6 +138,10 @@ class Field a => FField a where
 
     default getFieldSize :: Proxy a -> Integer
     getFieldSize _ = fromIntegral $ length (allElems @a)
+
+    default getGen :: a
+    getGen = findGenerator (<*>) (L.delete f0 allElems)
+
 
 ----------------------------------------------------------------------------
 -- Integer
@@ -211,23 +228,12 @@ instance (KnownNat n) => Ring (Z n) where
     f1 = Z 1
     (Z a) <*> (Z b) = toZ $ a * b
 
--- | Naive search for any group generator.
-findGenerator :: forall a. (Show a, FField a) => [a] -> a
-findGenerator elems =
-    fromMaybe (error "Couldn't find generator!") $
-    find (\g -> let s = genOrderSet [] g g in length s == n - 1) $ filter (/= f0) elems
-  where
-    n = length elems
-    genOrderSet acc g0 g | g == f1 = nub $ f1 : acc
-                         | g `elem` acc = acc
-                         | otherwise = genOrderSet (g:acc) g0 (g <*> g0)
 
 instance (PrimeNat n) => Field (Z n) where
     finv (Z a) = toZ $ a `fastExp` (natValI @n - 2)
 instance (PrimeNat n) => FField (Z n) where
     getFieldSize _ = natValI @n
     allElems = map toZ $ [0..(natValI @n - 1)]
-    getGen = findGenerator allElems
 
 ----------------------------------------------------------------------------
 -- Polynomials
@@ -235,7 +241,7 @@ instance (PrimeNat n) => FField (Z n) where
 
 -- | Empty polynomial is equivalent to [0]. Big endian (head is higher
 -- degree coefficient).
-newtype Poly a = Poly [a] deriving (Functor,Ord)
+newtype Poly a = Poly { unPoly :: [a] } deriving (Functor,Ord)
 
 instance Show a => Show (Poly a) where
     show (Poly l) = "Poly " ++ show l
@@ -382,7 +388,7 @@ getCoeffPoly :: forall p n. (KnownNat p, KnownNat n) => Poly (Z n)
 getCoeffPoly = map toZ (reflectCoeffPoly @p @n)
 
 -- Empty polynomial is equivalent for [0]. Head -- higher degree.
-newtype FinPoly (p :: Nat) a = FinPoly (Poly a) deriving (Eq,Ord)
+newtype FinPoly (p :: Nat) a = FinPoly { unFinPoly :: Poly a } deriving (Eq,Ord)
 
 instance (Show a) => Show (FinPoly p a) where
     show (FinPoly x) = "Fin" <> show x
@@ -442,7 +448,6 @@ instance (PrimePoly p n) => Field (FinPoly p (Z n)) where
         mkFinPoly $ f <^> (getFieldSize (Proxy @(FinPoly p (Z n))) - 2)
 instance (PrimePoly p n) => FField (FinPoly p (Z n)) where
     allElems = allFinPolys
-    getGen = findGenerator allFinPolys
     getFieldSize _ = do
         let b :: Integer
             b = fromIntegral $ natValI @n
