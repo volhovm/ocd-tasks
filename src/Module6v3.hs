@@ -4,6 +4,7 @@
 
 module Module6v3
        ( ecRho
+       , binExpand
        , ternExpand
        ) where
 
