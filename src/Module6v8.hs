@@ -1,10 +1,10 @@
+{-# OPTIONS_GHC -fno-warn-unused-top-binds #-}
+
 -- | Bilinear pairings on EC.
 
 module Module6v8 () where
 
 import Universum hiding ((<*>))
-
-import qualified Data.List as L
 
 import Lib.Elliptic
 import Lib.Field
@@ -103,62 +103,97 @@ em(P,Q) = em(apP1 + bpP2, aqP1 + bqP2)
 -- 6.35 Miller's algorithm
 ----------------------------------------------------------------------------
 
+
 -- Computes Weil pairing of power m for P and Q.
 millerWeil :: forall f. (FField f, HasECParams f, Show f) => Integer -> EC f -> EC f -> EC f -> f
-millerWeil m p q s = do
-    let calc b arg = loop (drop 1 $ reverse $ binExpand m) arg b f1
-    let e1 = calc p (q <+> s)
-    let e2 = calc p s
-    let e3 = calc q (p <-> s)
-    let e4 = calc q (fneg s)
-    traceShow e1 $
-     traceShow e2 $
-     traceShow e3 $
-     traceShow e4 $
-     e1 <*> e4 <*> finv (e2 <*> e3)
+millerWeil m p0 q0 s = do
+    let calc b arg = loop (drop 1 $ reverse $ binExpand m) b arg b f1
+    let e1 = calc p0 (q0 <+> s)
+    let e2 = calc p0 s
+    let e3 = calc q0 (p0 <-> s)
+    let e4 = calc q0 (fneg s)
+    e1 <*> e4 <*> finv (e2 <*> e3)
   where
-
-    loop :: [Integer] -> EC f -> EC f -> f -> f
-    loop [] _ _ f = f
-    loop mi x t f = do
-        let t' = 2 `times` t
-        let f' = (f <^> 2) <*> g t t x
-        uncurry (loop (L.tail mi) x) $ case L.head mi of
-          1 -> (t' <+> p, f' <*> g t' p x)
-          _ -> (t', f')
+    loop :: [Integer] -> EC f -> EC f -> EC f -> f -> f
+    loop [] _ _ _ f = f
+    loop (mi:mx) p x t f = do
+       let t' = 2 `times` t
+       let f' = (f <^> 2) <*> g t t x
+       uncurry (loop mx p x) $ case mi of
+         1 -> (t' <+> p, f' <*> g t' p x)
+         _ -> (t', f')
 
     g :: EC f -> EC f -> EC f -> f
-    g p'@(EC xp yp) q'@(EC xq yq) (EC x y) =
-        let ECParams{..} = ecParams
-            λ = if xp == xq
-                then (3 `times` (xp <^> 2) <+> ecA) <*> finv (2 `times` yp)
-                else (yq <-> yp) <*> finv (xq <-> xp)
-        in if p' == q'
-           then x <-> xp
-           else (y <-> yp <-> λ <*> (x <-> xp)) <*>
-                finv (x <+> xp <+> xq <-> λ <^> 2)
+    g p@(EC xp yp) q@(EC xq yq) (EC x y) =
+       let ECParams{..} = ecParams
+           λ = if xp == xq
+               then (3 `times` (xp <^> 2) <+> ecA) <*> finv (2 `times` yp)
+               else (yq <-> yp) <*> finv (xq <-> xp)
+       in if p == fneg q
+          then x <-> xp
+          else (y <-> yp <-> λ <*> (x <-> xp)) <*>
+               finv (x <+> xp <+> xq <-> λ <^> 2)
     g _ _ _ = error "millerWeil: g called with zero point"
 
 e635 :: IO ()
 e635 = do
     let solve :: forall n. (PrimeNat n) =>
-                 Integer -> Integer -> ECZ n -> ECZ n -> ECZ n -> Integer -> IO ()
+                 Integer -> Integer -> ECZ n -> ECZ n -> ECZ n -> Integer -> IO (Z n)
         solve a b p q s m =
             withECParams (ECParams (toZ a) (toZ b) :: ECParams (Z n)) $ do
                 let w = millerWeil m p q s
-                if w <^> m == 1 then print w else error "e635 whoops"
+                if w <^> m == f1 then pure w else error "e635 failed!"
 
-    solve @631 30 34 (EC 36 60) (EC 121 387) (EC 0 36) 5
+    putText "double-check/example 6.43"
+    print =<< solve @631 30 34 (EC 36 60) (EC 121 387) (EC 0 36) 5
+    print =<< solve @631 30 34 (EC 617 5) (EC 121 244) (EC 0 36) 5
 
---    solve @1051 0 23 (EC 109 203) (EC 240 203) (EC 1 554) 5
---    solve @883 (-35) (-9) (EC 5 66) (EC 103 602) (EC 1 197) 7
---    solve @1009 0 37 (EC 8 703) (EC 49 20) (EC 0 0) 7
---    solve @1009 0 37 (EC 417 952) (EC 561 153) (EC 0 0) 7
+    putText "exercise 6.35"
+    print =<< solve @1051 0 23 (EC 109 203) (EC 240 203) (EC 1 554) 5
+    print =<< solve @883 (-35) (-9) (EC 5 66) (EC 103 602) (EC 1 197) 7
+    s3 <- solve @1009 37 0 (EC 8 703) (EC 49 20) (EC 0 0) 7
+    s4 <- solve @1009 37 0 (EC 417 952) (EC 561 153) (EC 0 0) 7
+    print s3
+    print s4
+    print $ s3 <^> 6 == s4
 
 {-
 λ> e635
-498
-522
-129
-202
+double-check/example 6.43
+242
+512
+exercise 6.35
+671
+749
+105
+394
+True
+-}
+
+----------------------------------------------------------------------------
+-- 6.36 Tate pairing properties
+----------------------------------------------------------------------------
+
+{-
+Also a good one: https://www.win.tue.nl/~bdeweger/downloads/MT%20Martijn%20Maas.pdf
+
+I don't really know, but maybe this:
+
+First of all, fp ~ (x-P)^l/x^l, because it has divisor l[P] - l[0].
+
+Then, f_P(Q+S)/f_P(S) ~ [ (Q+S-P)/(Q+S) / (S-P)/S ]^l
+                      = [ (Q+S-P)S / (Q+S)(S-P) ]^l
+                      = [ ((P-S)-Q)/(P-S)  /  (-S-Q)/(-S) ]^l
+                      ~ f_Q(P-S) / f_Q(-S)
+
+I guess that some smart divisor theory would help, but this sketch should definitely
+be somewhere close.
+-}
+
+----------------------------------------------------------------------------
+-- 6.37 Tate/Weil
+----------------------------------------------------------------------------
+
+{-
+Obvious by the definition.
 -}
