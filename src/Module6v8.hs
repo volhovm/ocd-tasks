@@ -2,7 +2,9 @@
 
 -- | Bilinear pairings on EC.
 
-module Module6v8 () where
+module Module6v8
+    ( millerWeil
+    ) where
 
 import Universum hiding ((<*>))
 
@@ -103,6 +105,19 @@ em(P,Q) = em(apP1 + bpP2, aqP1 + bqP2)
 -- 6.35 Miller's algorithm
 ----------------------------------------------------------------------------
 
+millerG :: (HasECParams f, Field f, Show f) => EC f -> EC f -> EC f -> f
+millerG p@(EC xp yp) q@(EC xq yq) (EC x y) =
+    let ECParams{..} = ecParams
+        λ = if xp == xq
+            then (3 `times` (xp <^> 2) <+> ecA) <*> finv (2 `times` yp)
+            else (yq <-> yp) <*> finv (xq <-> xp)
+        res = if p == fneg q
+              then x <-> xp
+              else (y <-> yp <-> λ <*> (x <-> xp)) <*>
+                   finv (x <+> xp <+> xq <-> λ <^> 2)
+    in res
+millerG _ _ _ = error "millerWeil: g called with zero point"
+
 
 -- Computes Weil pairing of power m for P and Q.
 millerWeil :: forall f. (FField f, HasECParams f, Show f) => Integer -> EC f -> EC f -> EC f -> f
@@ -112,28 +127,18 @@ millerWeil m p0 q0 s = do
     let e2 = calc p0 s
     let e3 = calc q0 (p0 <-> s)
     let e4 = calc q0 (fneg s)
+
     e1 <*> e4 <*> finv (e2 <*> e3)
   where
     loop :: [Integer] -> EC f -> EC f -> EC f -> f -> f
     loop [] _ _ _ f = f
     loop (mi:mx) p x t f = do
        let t' = 2 `times` t
-       let f' = (f <^> 2) <*> g t t x
+       let f' = (f <^> 2) <*> millerG t t x
        uncurry (loop mx p x) $ case mi of
-         1 -> (t' <+> p, f' <*> g t' p x)
+         1 -> (t' <+> p, f' <*> millerG t' p x)
          _ -> (t', f')
 
-    g :: EC f -> EC f -> EC f -> f
-    g p@(EC xp yp) q@(EC xq yq) (EC x y) =
-       let ECParams{..} = ecParams
-           λ = if xp == xq
-               then (3 `times` (xp <^> 2) <+> ecA) <*> finv (2 `times` yp)
-               else (yq <-> yp) <*> finv (xq <-> xp)
-       in if p == fneg q
-          then x <-> xp
-          else (y <-> yp <-> λ <*> (x <-> xp)) <*>
-               finv (x <+> xp <+> xq <-> λ <^> 2)
-    g _ _ _ = error "millerWeil: g called with zero point"
 
 e635 :: IO ()
 e635 = do

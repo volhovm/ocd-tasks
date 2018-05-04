@@ -4,17 +4,19 @@
 {-# LANGUAGE DefaultSignatures   #-}
 {-# LANGUAGE DeriveFunctor       #-}
 {-# LANGUAGE MonoLocalBinds      #-}
+{-# LANGUAGE MultiWayIf          #-}
 {-# LANGUAGE TypeInType          #-}
 
 -- | Finite fields and stuff. TODO rename/decouple it.
 
 module Lib.Field
     ( AGroup (..)
+    , linearTimes
+    , fastTimes
     , Ring(..)
     , (<->)
-    , (<^>)
+    , linearExp
     , fastExp
-    , times
     , Field(..)
     , FField(..)
     , Euclidian(..)
@@ -23,6 +25,7 @@ module Lib.Field
 
     , findGenerator
     , gcdEucl
+    , extendedEucl
 
     , Z (..)
     , toZ
@@ -30,13 +33,17 @@ module Lib.Field
     , Poly(..)
     , prettyPoly
     , deg
+    , euclPoly
     , FinPoly (..)
     , mkFinPoly
     , isPrimePoly
     , FinPolyNats
     , PrimePoly
+    , represent
     , representBack
-    , remakeFinPoly
+    , getCoeffPoly
+    , irreducablePoly
+    , invFinPolyFermat
 
     , Matrix (..)
     , showMatrix
@@ -60,22 +67,29 @@ import qualified Data.List as L
 -- Addition group.
 class Eq a => AGroup a where
     f0 :: a
+
     infixl 5 <+>
     (<+>) :: a -> a -> a
+
     fneg :: a -> a
 
-class (Eq a, AGroup a) => Ring a where
-    f1 :: a
-    infixl 6 <*>
-    (<*>) :: a -> a -> a
+    -- In case it can be implemented more efficiently.
+    infixl 6 `times`
+    times :: Integer -> a -> a
+    default times :: Integer -> a -> a
+    times = fastTimes
 
 infixl 5 <->
 (<->) :: AGroup a => a -> a -> a
 (<->) a b = a <+> (fneg b)
 
-infixl 6 `times`
-times :: forall a. (AGroup a) => Integer -> a -> a
-times n0 a = tms n0
+-- | Slow linear "times" implementation.
+linearTimes :: forall a. (AGroup a) => Integer -> a -> a
+linearTimes n a = foldl' (<+>) f0 $ replicate (fromIntegral n) a
+
+-- | Double-and-add.
+fastTimes :: forall a. (AGroup a) => Integer -> a -> a
+fastTimes n0 a = tms n0
   where
     tms :: Integer -> a
     tms 0 = f0
@@ -86,21 +100,20 @@ times n0 a = tms n0
         if | nmod == 0 -> nnext <+> nnext
            | otherwise -> nnext <+> nnext <+> a
 
--- | Searchs for the generator given op and list of elements to
--- produce (also to choose from). For multiplicative group it should
--- be used with (<*>) and (allElems \\ f0), since 0 is not produced.
-findGenerator :: forall a. (Eq a) => (a -> a -> a) -> [a] -> a
-findGenerator op elems =
-    fromMaybe (error $ "findGenerator: didn't manage to") $
-    find (\g -> let s = genOrderSet [] g g in length s == n) elems
-  where
-    n = length elems
-    genOrderSet acc g0 g | g `elem` acc = acc
-                         | otherwise = genOrderSet (g:acc) g0 (g `op` g0)
+class (Eq a, AGroup a) => Ring a where
+    f1 :: a
 
-infixl 7 <^>
-(<^>) :: Ring a => a -> Integer -> a
-(<^>) a n = foldl' (<*>) f1 $ replicate (fromIntegral n) a
+    infixl 6 <*>
+    (<*>) :: a -> a -> a
+
+    infixl 7 <^>
+    (<^>) :: a -> Integer -> a
+    default (<^>) :: a -> Integer -> a
+    (<^>) = fastExp
+
+-- | Linear exponentiation by multiplication.
+linearExp :: Ring a => a -> Integer -> a
+linearExp a n = foldl' (<*>) f1 $ replicate (fromIntegral n) a
 
 -- | Fast powering algorithm for calculating a^p (mod p).
 fastExp :: forall a n . (Ring a, Integral n) => a -> n -> a
@@ -114,6 +127,18 @@ fastExp g n = power g n
         let bnext = a `power` bdiv
         if | bmod == 0 -> bnext <*> bnext
            | otherwise -> bnext <*> bnext <*> a
+
+-- | Searchs for the generator given op and list of elements to
+-- produce (also to choose from). For multiplicative group it should
+-- be used with (<*>) and (allElems \\ f0), since 0 is not produced.
+findGenerator :: forall a. (Eq a) => (a -> a -> a) -> [a] -> a
+findGenerator op elems =
+    fromMaybe (error $ "findGenerator: didn't manage to") $
+    find (\g -> let s = genOrderSet [] g g in length s == n) elems
+  where
+    n = length elems
+    genOrderSet acc g0 g | g `elem` acc = acc
+                         | otherwise = genOrderSet (g:acc) g0 (g `op` g0)
 
 -- Field.
 class Ring a => Field a where
@@ -180,7 +205,7 @@ natValI :: forall n. KnownNat n => Integer
 natValI = toInteger $ natVal (Proxy @n)
 
 -- Z/nZ
-newtype Z (a :: Nat) = Z { unZ :: Integer } deriving (Num, Eq, Ord, Enum, Real, Integral)
+newtype Z (a :: Nat) = Z { unZ :: Integer } deriving (Num, Eq, Ord, Enum, Real, Integral, Generic, Hashable)
 
 instance Show (Z a) where
     show (Z i) = show i
@@ -190,7 +215,7 @@ toZ i = Z $ i `mod` (natValI @n)
 
 class KnownNat n => PrimeNat (n :: Nat)
 
--- Sadly, I do not know a better way to solve this problem.  It'd be
+-- Sadly, I do not know a better way to solve this problem. It'd be
 -- nice if GHC ran primality test every time he was checking the
 -- instance. I think I could at least use TH to pre-generate first k
 -- primes. Also if this is tedious to use, one can just define
@@ -208,9 +233,17 @@ DefPrime(9)
 DefPrime(11)
 DefPrime(13)
 DefPrime(17)
+DefPrime(19)
+DefPrime(23)
+DefPrime(29)
+DefPrime(41)
+DefPrime(47)
+DefPrime(53)
+DefPrime(59)
 DefPrime(83)
 DefPrime(613)
 DefPrime(631)
+DefPrime(691)
 DefPrime(883)
 DefPrime(1009)
 DefPrime(1051)
@@ -245,7 +278,9 @@ instance (PrimeNat n) => FField (Z n) where
 
 -- | Empty polynomial is equivalent to [0]. Big endian (head is higher
 -- degree coefficient).
-newtype Poly a = Poly { unPoly :: [a] } deriving (Functor,Ord)
+newtype Poly a = Poly { unPoly :: [a] } deriving (Functor,Ord,Generic)
+
+deriving instance Hashable a => Hashable (Poly a)
 
 instance Show a => Show (Poly a) where
     show (Poly l) = "Poly " ++ show l
@@ -366,6 +401,21 @@ gcdEucl a b =
         let (_,r) = r0 </> r1
         in if r == f0 then r1 else gcdEuclGo r1 r
 
+-- | For a,b returns (gcd,u,v) such that au + bv = gcd.
+extendedEucl' :: (Euclidian n) => n -> n -> (n, n, n)
+extendedEucl' a b
+    | a == f0 = (b, f0, f1)
+    | otherwise =
+        let (g,s,t) = extendedEucl (b `eMod` a) a
+        in (g, t <-> (b `eDiv` a) <*> s, s)
+
+extendedEucl :: (Euclidian n) => n -> n -> (n, n, n)
+extendedEucl a b =
+    let res@(g,u,v) = extendedEucl' a b in
+      if | u <*> a <+> v <*> b /= g -> error "extendedEucl is broken 1"
+         | a `eMod` g /= f0 -> error "extendedEucl is broken 2"
+         | b `eMod` g /= f0 -> error "extendedEucl is broken 3"
+         | otherwise -> res
 
 ----------------------------------------------------------------------------
 -- Polynomials quotieng rings/fields
@@ -392,7 +442,9 @@ getCoeffPoly :: forall p n. (KnownNat p, KnownNat n) => Poly (Z n)
 getCoeffPoly = map toZ (reflectCoeffPoly @p @n)
 
 -- Empty polynomial is equivalent for [0]. Head -- higher degree.
-newtype FinPoly (p :: Nat) a = FinPoly { unFinPoly :: Poly a } deriving (Eq,Ord)
+newtype FinPoly (p :: Nat) a = FinPoly { unFinPoly :: Poly a } deriving (Eq,Ord,Generic)
+
+deriving instance Hashable (Poly a) => Hashable (FinPoly p a)
 
 instance (Show a) => Show (FinPoly p a) where
     show (FinPoly x) = "Fin" <> show x
@@ -420,9 +472,6 @@ isPrimePoly p@(Poly pP) =
 mkFinPoly :: forall p n . (KnownNat p, PrimeNat n) => Poly (Z n) -> FinPoly p (Z n)
 mkFinPoly x = FinPoly $ (stripZ x) `eMod` getCoeffPoly @p
 
-remakeFinPoly :: forall p n . (KnownNat p, PrimeNat n) => FinPoly p (Z n) -> FinPoly p (Z n)
-remakeFinPoly (FinPoly x) = mkFinPoly x
-
 type FinPolyNats p n = (KnownNat p, PrimeNat n)
 
 instance (FinPolyNats p n) => AGroup (FinPoly p (Z n)) where
@@ -446,18 +495,34 @@ instance PrimePoly 67 2
 -- 75 = x^6 + x^3 + x + 1 is NOT prime
 -- 11 = x^3 + x + 1 is prime poly over F_2
 instance PrimePoly 11 2
+-- ℂ: x^2 + 1 for p = 3 (mod 4)
+instance PrimePoly 362 19
+instance PrimePoly 477482 691
+
+invFinPolyFermat :: forall p n. (KnownNat p, PrimeNat n) => FinPoly p (Z n) -> FinPoly p (Z n)
+invFinPolyFermat f =
+    let b = fromIntegral (natValI @n) :: Integer
+        s = deg (reflectCoeffPoly @p @n) :: Integer
+        phi = (b ^ s) - 1 -- http://www.dtic.mil/dtic/tr/fulltext/u2/a218148.pdf
+        res = f <^> (phi - 1) -- because f^φ = 1
+    in if res <*> f /= f1 then error "invFinPolyFermat failed" else res
 
 instance (PrimePoly p n) => Field (FinPoly p (Z n)) where
-    finv (FinPoly f) =
-        mkFinPoly $ f <^> (getFieldSize (Proxy @(FinPoly p (Z n))) - 2)
+    finv = invFinPolyFermat
+
 instance (PrimePoly p n) => FField (FinPoly p (Z n)) where
     allElems = allFinPolys
-    getFieldSize _ = do
-        let b :: Integer
-            b = fromIntegral $ natValI @n
-        let s :: Integer
-            s = deg (reflectCoeffPoly @p @n)
-        (b ^ s)
+    getFieldSize _ =
+        let b = fromIntegral (natValI @n) :: Integer
+            s = deg (reflectCoeffPoly @p @n) :: Integer
+        in (b ^ s)
+
+irreducablePoly :: forall n. (PrimeNat n) => Integer -> Poly (Z n) -> Bool
+irreducablePoly d (stripZ -> a) =
+    let n = natValI @n
+        l = representBack n $ 1 : replicate (fromIntegral d) 0
+        ps = drop (fromIntegral n) $ (map (stripZ . Poly . map (toZ @n) . represent n) [0..(l-1)])
+    in all (\x -> a `eMod` x /= f0) ps
 
 _testFinPolys :: IO ()
 _testFinPolys = do

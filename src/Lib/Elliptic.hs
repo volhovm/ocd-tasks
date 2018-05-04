@@ -19,6 +19,7 @@ module Lib.Elliptic
        , EC (..)
        , ECZ
        , onCurve
+       , ecPlus
        , listAllPoints
        , ecGroupSize
        , ecOrder

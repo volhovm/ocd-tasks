@@ -192,13 +192,13 @@ isSquareRoot a0 b0 = go a0 b0
         | (a `mod` b) == b-1 = case b `mod` 4 of
             1 -> 1
             3 -> -1
-            _ -> error "isSquareRoot: can't happen (1)"
+            x -> error $ "isSquareRoot: can't happen (1): " <> show x
         | (a `mod` b) == 2 = case b `mod` 8 of
             1 -> 1
             7 -> 1
             3 -> -1
             5 -> -1
-            _ -> error "isSquareRoot: can't happen (2)"
+            x -> error $ "isSquareRoot: can't happen (2): " <> show (a,b,x)
         | even a = go 2 b * go (a `div` 2) b
         | otherwise = case (a `mod` 4, b `mod` 4) of
             (3,3) -> go (-1) a * go (b `mod` a) a
