@@ -6,7 +6,7 @@ module Module6v6 where
 
 import Universum hiding ((<*>))
 
-import Lib.Elliptic
+import Lib.Elliptic hiding (ecPlus)
 import Lib.Field
 import Lib.Misc
 

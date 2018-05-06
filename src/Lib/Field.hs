@@ -35,6 +35,7 @@ module Lib.Field
     , deg
     , euclPoly
     , FinPoly (..)
+    , FinPolyZ
     , mkFinPoly
     , isPrimePoly
     , FinPolyNats
@@ -166,7 +167,6 @@ class Field a => FField a where
 
     default getGen :: a
     getGen = findGenerator (<*>) (L.delete f0 allElems)
-
 
 ----------------------------------------------------------------------------
 -- Integer
@@ -446,6 +446,8 @@ newtype FinPoly (p :: Nat) a = FinPoly { unFinPoly :: Poly a } deriving (Eq,Ord,
 
 deriving instance Hashable (Poly a) => Hashable (FinPoly p a)
 
+type FinPolyZ p n = FinPoly p (Z n)
+
 instance (Show a) => Show (FinPoly p a) where
     show (FinPoly x) = "Fin" <> show x
 
@@ -497,6 +499,7 @@ instance PrimePoly 67 2
 instance PrimePoly 11 2
 -- ℂ: x^2 + 1 for p = 3 (mod 4)
 instance PrimePoly 362 19
+instance PrimePoly 2210 47
 instance PrimePoly 477482 691
 
 invFinPolyFermat :: forall p n. (KnownNat p, PrimeNat n) => FinPoly p (Z n) -> FinPoly p (Z n)

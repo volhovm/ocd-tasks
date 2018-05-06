@@ -101,12 +101,9 @@ eulerPhiFast n =
     toRational n *
     product (map (\x -> 1 - 1 / (toRational x)) $ nub $ primeFactors n)
 
--- FIXME ineffective, do lagrange instead
 order :: (Integral n) => n -> n -> Maybe n
 order p g | g >= p = order p $ g `mod` p
-order p g = case filter (\e -> exp p g e == 1) $ factors (p-1) of
-    []    -> Nothing
-    (k:_) -> Just k
+order p g = find (\e -> exp p g e == 1) $ factors (p-1)
   where
     divides m n = n `mod` m == 0
     factors n = n : [x | x <- [1..n`div`2], x `divides` n]

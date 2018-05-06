@@ -4,17 +4,15 @@
 -- | Weil pairing over fields of prime power order, distortion map and
 -- modified pairing.
 
-module Module6v9 (e645) where
+module Module6v9 (e645,e642) where
 
 import Universum hiding ((<*>))
 
 import qualified Data.HashSet as HS
 import qualified Data.List as L
-import Data.Numbers.Primes (isPrime, primes)
 
 import Lib.Elliptic
 import Lib.Field
-import Lib.Misc
 import Module6v8 (millerWeil)
 
 ----------------------------------------------------------------------------
@@ -81,26 +79,70 @@ Trivial:
 
 {-
 
-l = 3 (mod 4). This gives us a possibilty to compute roots effectively in F_l.
-But is it really needed? :think:
+l = 3 (mod 4). This gives us a possibilty to compute roots effectively
+in F_l. But is it really needed? :think:
 
 Also, p - l = 0 (mod 4)
 
-To prove: e_l(Q,φ(Q))^l = 1 for every Q ∈ E[l].
+To prove: e_l(P,φ(P))^l = 1 for every P ∈ E[l], not only for P ∈ E(F_p)[l].
 
-Let's use proposition 6.50 (b) also. So we're trying to prove that Q
-is not multiple of P. Let φ(P) be multiple of P.
+As we already figured out, φ(P) ∈ E[l] for all P ∈ E[l].
+Let's use proposition 6.50 (b).
 
+Thoughts: If the embedding degree of E with respect to l was 2, then this
+exercise would be solved right away, but it doesn't seem to be so: for
+example, embedding degree of E(F_19) with respect to 11 (both are 3
+mod 4) is _not_ 2 because 19^2 /= 1 mod 11. So, apparently, E(F_p)[l]
+is not naturaly isomorphic to Z/lZ × Z/lZ. But the weaker property
+(proposition 6.50(a)) must hold anyway.
 
-TODO: I don't understand why the proof in prop. 6.53 doesn't work
+Solution:
+
+P = (a + ib, c + id)
+Q = φ(P) = (-a-ib, -d + ic)
+R = φ(Q) = (a + ib, -c - id)
+S = φ(R) = (-a-ib, d - ic)
+and finally φ(S) = (a + ib, c + id) = P
+
+So φ^2 is a negation. Can φ function cover all the elements of E[l]?
+The answer is no. Notice, that φ has 4 distinct powers, but
+E[l] has 4n+2 distinct elements, so two of them won't be matched.
+That's why φ(P) can't be a multiple of P and by 6.50(b) we're done.
 
 -}
+
+e642Check ::
+       forall p n. (PrimePoly p n, HasECParams (FinPolyZ p n))
+    => Integer
+    -> EC (FinPolyZ p n)
+    -> Bool
+e642Check l p =
+    let phi EC0      = EC0
+        phi (EC x y) = EC (fneg x) (y <*> mkFinPoly (Poly [1,0]))
+        q = phi p
+    in q `notElem` [ i `times` p | i <- [1..l] ]
+
+e642 :: IO ()
+e642 = do
+   let solve :: forall p n. (PrimePoly p n) => Integer -> IO ()
+       solve l = withECParams (ECParams (mkFinPoly $ Poly [1]) (mkFinPoly $ Poly [0]) :: ECParams (FinPolyZ p n)) $ do
+           let allP = L.delete EC0 (listAllPoints @(FinPolyZ p n))
+           let withOrderL = filter (\p -> l `times` p == EC0) allP
+           print $ length allP
+           print $ length withOrderL
+           print $ all (e642Check @p @n l) withOrderL
+
+   solve @2210 @47 3
+   solve @2210 @47 23
+   solve @2210 @47 31
+   solve @2210 @47 43
 
 ----------------------------------------------------------------------------
 -- 6.43 Distortion map for y^2 = x^3 + 1
 ----------------------------------------------------------------------------
 
 {-
+
 β ∈ K, β ≠ 1, β^3 = 1;
 φ(x,y) = (βx,y), φ(0) = 0;
 
@@ -127,18 +169,24 @@ Should also work for P1 = P2.
 -- 6.44 ... more
 ----------------------------------------------------------------------------
 
-
-primesINeed = filter (\x -> x `mod` 3 == 2) primes
-
 {-
 (a) p ≥ 3 is a prime with p ≡ 2 (mod 3).
 
-1. F_p doesn't contain β (β^3 = 1). In group with p ≡ 2 (mod 3) every number
-   has a cubic residue (wiki, ex 3.41 also): x = (x^{2n+1})^3 for p = 3n+2.
-   But the only cubic residue for 1 is 1 itself, which contradicts the
-   requirement for β not to be equal to 1.
+1. F_p doesn't contain β (β^3 = 1), because 3 doesn't divide p-1 =
+   3n+1. Also recall, that in group with p ≡ 2 (mod 3) every other
+   number (not 1) has a cubic residue (wiki, ex 3.41 also): x =
+   (x^{2n+1})^3 for p = 3n+2.
 
 2. F_{p^2}.
+
+   Size of a group is
+
+   p = (3n + 2)^2 = 9n^2 + 12n + 4 = 3n(3n+4) + 4 = 3n(3(n+1)+2) + 1
+
+   3 divides p-1, so it should have element of order 3, which is g^{(p^2-1)/3}.
+
+   That's the end of the proof, but you may want to admire how one _should not_
+   try proving this. Here we go.
 
    I was trying to find an irreducible polynomial for any p with degree 2, but
    in order to do this, ax^2 + bx + c shouldn't have roots, but it seems
@@ -147,7 +195,6 @@ primesINeed = filter (\x -> x `mod` 3 == 2) primes
    EDIT: in fact, 3n-1 never has a square root if p ≡ 2 (mod 3), then we
    should represent 3n-1 as b^2-4ac -- we can take b = 1, a = 1, c = -(3n-2)/4,
    so Δ = 1 + (3n-2) = 3n-1. But it only makes things complicated, I think.
-
 
    It appears that p = 3n+2 splits into two classes with modulo 4: 1 and 3.
 
@@ -164,6 +211,27 @@ primesINeed = filter (\x -> x `mod` 3 == 2) primes
 
    If p ≡ 1 (mod 4), apply similar considerations.
 
+   So, x^2 + x - (-4)/4 = 0
+       x^2 + x + 4/4 = 0
+
+       So x^3 = x * x^2 = x * (- x - 4/4) = -x^2 - 4/4*x
+              = -(-x - 4/4) - 4/4*x
+              = x + 4/4 + 4/4x
+              = x (1 + 4/4) + 4/4
+
+   Let's call 4/4 τ
+
+   (a + xb)^3 = (a + xb)(a^2 + 2axb + x^2b^2)
+              = a^3 + 2a^2xb + ax^2b^2 + a^2bx + 2ax^2b^2 + x^3b^3
+              = a^3 + 3a^2bx + 3ab^2x^2 + b^3x^3
+              = a^3 + 3a^2bx + 3ab^2(-x-τ) + b^3(x (1 + τ) + τ)
+              = a^3 + 3a^2bx - 3ab^2x - 3τab^2 + b^3τ + b^3(1+τ)x
+              = (a^3 - 3τab^2 + b^3τ) + (3a^2b - 3ab^2 + b^3(1+τ) + 1)x
+
+   Now we want a^3 - 3τab^2 + b^3τ = 1
+               3a^2b - 3ab^2 + b^3(1+τ) + 1 = 0
+
+   ... can it be solved? EDIT: totally.
 
 (b) Same as in proposition 6.53: φ(P) = (βx,y), φ(P) has the same order as P
     since lφ(P) = φ(lP) = 0.
@@ -202,8 +270,10 @@ e644Check = do
 ----------------------------------------------------------------------------
 
 -- finpoly ex645
-type FP645 = FinPoly 477482 (Z 691)
---type FP645 = FinPoly 362 (Z 19)
+type FP645 = FinPolyZ 477482 691
+
+fpl :: [Integer] -> FP645
+fpl = mkFinPoly . Poly . map toZ
 
 -- The faster version of findGeneratorH usnig hashsets.
 findGeneratorH ::
@@ -222,22 +292,66 @@ findGeneratorH op elems0 = do
     genOrderSet acc g0 g | g `HS.member` acc = acc
                          | otherwise = genOrderSet (HS.insert g acc) g0 (g `op` g0)
 
+e645Phi :: EC FP645 -> EC FP645
+e645Phi = phi
+  where
+    --g <- findGeneratorH (<*>) (L.delete f0 (allElems @FP645))
+    g = fpl [3,689] -- pre-computed generator
+    α = g <^> ((691^2-1) `div` 4)
+    phi (EC x y) = EC (fneg x) (α <*> y)
+    phi EC0      = EC0
+
+-- Modified weil pairing for e645 curve.
+e645WeilMod :: (HasECParams FP645) => Integer -> EC FP645 -> EC FP645 -> FP645
+e645WeilMod m p (e645Phi -> q) =
+    let s = 6 `times` p <+> 3 `times` q
+    in millerWeil m p q s
+
 -- We're actually working in complex plane, 691 = 3 (mod 4), so
 e645 :: IO ()
-e645 = do
-    let fpl :: [Integer] -> FP645
-        fpl = mkFinPoly . Poly . map toZ
-    withECParams (ECParams (fpl [0,1]) (fpl [0]) :: ECParams FP645) $ do
-        --g <- findGeneratorH (<*>) (L.delete f0 (allElems @FP645))
-        let g = fpl [3,689] -- pre-computed generator
-        let α = g <^> ((691^2-1) `div` 4)
-        let phi (EC x y) = EC (fneg x) (α <*> y)
-            phi EC0      = EC0
-        let e m p (phi -> q) =
-                let s = 6 `times` p <+> 3 `times` q
-                in millerWeil m p q s
-        let p = EC (fpl [301]) (fpl [14])
+e645 = withECParams (ECParams (fpl [0,1]) (fpl [0]) :: ECParams FP645) $ do
+    let p = EC (fpl [301]) (fpl [14])
 
-        let e' = e 173 p p
-        print $ e'
-        print $ e' <^> 173
+    let e' = e645WeilMod 173 p p
+    print $ e'
+    print $ e' <^> 173
+
+----------------------------------------------------------------------------
+-- 6.46 MOV
+----------------------------------------------------------------------------
+
+logDTrialAndError' :: forall f. (FField f) => f -> f -> Integer
+logDTrialAndError' g h =
+    fst $
+    fromMaybe (error "logDTrialAndError'") $
+    find ((== h) . snd) $
+    map (\x -> (x, g <^> x)) [1..getFieldSize (Proxy @f)]
+
+-- This is not a general-purpose MOV, it's optimized for FP645 and is
+-- using the modified pairing instead of searching for T'.
+movSolve ::
+       (HasECParams FP645)
+    => Integer
+    -> EC FP645
+    -> EC FP645
+    -> Integer
+movSolve l p q = do
+    let α = e645WeilMod l p p
+    let β = e645WeilMod l p q
+    logDTrialAndError' α β
+
+e646 :: IO ()
+e646 = do
+    withECParams (ECParams (fpl [0,1]) (fpl [0]) :: ECParams FP645) $ do
+        let ec x y = EC (fpl [x]) (fpl [y])
+        let p = ec 301 14
+        let q = ec 143 27
+        let d = movSolve 173 p q
+        print d
+        print $ d `times` p == q
+
+{-
+λ> e646
+122
+True
+-}
