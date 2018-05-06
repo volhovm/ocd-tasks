@@ -249,6 +249,7 @@ DefPrime(1009)
 DefPrime(1051)
 DefPrime(1201)
 DefPrime(1321)
+DefPrime(1723)
 DefPrime(1999)
 DefPrime(2671)
 DefPrime(3221)
@@ -501,6 +502,7 @@ instance PrimePoly 11 2
 instance PrimePoly 362 19
 instance PrimePoly 2210 47
 instance PrimePoly 477482 691
+instance PrimePoly 2968730 1723
 
 invFinPolyFermat :: forall p n. (KnownNat p, PrimeNat n) => FinPoly p (Z n) -> FinPoly p (Z n)
 invFinPolyFermat f =

@@ -24,6 +24,8 @@ module Lib.Misc
        , generator
        , isSquareRoot
        , suchThat
+       , binExpand
+       , ternExpand
        ) where
 
 import Universum hiding (exp)
@@ -205,3 +207,32 @@ suchThat :: (Monad m) => m a -> (a -> Bool) -> m a
 suchThat action predicate = do
    x <- action
    if predicate x then pure x else action `suchThat` predicate
+
+-- binary expansion, little endian
+binExpand :: Integer -> [Integer]
+binExpand 0 = []
+binExpand x = bool 1 0 (even x) : binExpand (x `div` 2)
+
+-- Returns the list of powers (one of {-1, 0, 1}), little endian
+ternExpand :: Integer -> [Integer]
+ternExpand = shrink . binExpand
+  where
+    -- returns (i,l) of longest sequence of 1s such that it starts on
+    -- ith element and l elems long.
+    tryShrink :: [Integer] -> Maybe (Int,Int)
+    tryShrink l =
+        fmap (first fromIntegral . swap) $
+        head $
+        reverse $
+        sortOn fst $
+        filter ((> 2) . fst) $
+        map (first $ length . takeWhile (== 1)) $
+        tails l `zip` [(0::Integer)..]
+    shrink x = case tryShrink x of
+      Nothing    -> x
+      Just (i,j) ->
+          let left []        = [1]
+              left (0:xs)    = 1:xs
+              left ((-1):xs) = 0:xs
+              left imp       = error $ "ternExapnd.left: can't happen: " <> show imp
+          in shrink $ take i x <> [-1] <> replicate (j-1) 0 <> left (drop (i+j) x)

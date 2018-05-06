@@ -53,6 +53,7 @@ library
                      , Module6v7
                      , Module6v8
                      , Module6v9
+                     , Module6v10
   build-depends:       base >=4.9 && <4.11
                      , bytestring >=0.10
                      , containers >= 0.5.7.1

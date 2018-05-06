@@ -15,7 +15,7 @@ import System.Random
 
 import Lib.Elliptic
 import Lib.Field
-import Lib.Misc (exEucl, inverse)
+import Lib.Misc (binExpand, exEucl, inverse, ternExpand)
 
 ----------------------------------------------------------------------------
 -- 6.8
@@ -95,35 +95,6 @@ EC 243 1875
 -- 6.12
 ----------------------------------------------------------------------------
 
--- binary expansion, little endian
-binExpand :: Integer -> [Integer]
-binExpand 0 = []
-binExpand x = bool 1 0 (even x) : binExpand (x `div` 2)
-
--- Returns the list of powers (one of {-1, 0, 1}), little endian
-ternExpand :: Integer -> [Integer]
-ternExpand = shrink . binExpand
-  where
-    -- returns (i,l) of longest sequence of 1s such that it starts on
-    -- ith element and l elems long.
-    tryShrink :: [Integer] -> Maybe (Int,Int)
-    tryShrink l =
-        fmap (first fromIntegral . swap) $
-        head $
-        reverse $
-        sortOn fst $
-        filter ((> 2) . fst) $
-        map (first $ length . takeWhile (== 1)) $
-        tails l `zip` [(0::Integer)..]
-    shrink x = case tryShrink x of
-      Nothing    -> x
-      Just (i,j) ->
-          let left []        = [1]
-              left (0:xs)    = 1:xs
-              left ((-1):xs) = 0:xs
-              left imp       = error $ "ternExapnd.left: can't happen: " <> show imp
-          in shrink $ take i x <> [-1] <> replicate (j-1) 0 <> left (drop (i+j) x)
-
 testExpand :: IO ()
 testExpand = replicateM_ 1000 $ do
     r <- randomRIO @Integer (0,1000000)
@@ -131,6 +102,7 @@ testExpand = replicateM_ 1000 $ do
     let e = ternExpand r
     let r1 = interpretTern e
     when (r1 /= r) $ error "kek"
+
 
 ectimes :: forall f. (HasECParams f, Field f) => Integer -> EC f -> EC f
 ectimes n0 p0 =
