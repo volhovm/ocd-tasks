@@ -75,3 +75,31 @@ FinPoly [428,68]
 FinPoly [428,68]
 145
 -}
+
+----------------------------------------------------------------------------
+-- 6.48 Breaking Tripartite DH
+----------------------------------------------------------------------------
+
+{-
+Let e denote the modified Weil pairing. If there's an algorithm that
+can solve DH, then pass e(P1,P2), e(P,P3) to it. Since e(P1,P2) =
+e(P,P)^{s1s2} and e(P,P3) = e(P,P)^{s3}, algorithm will return
+e(P,P)^{s1s2s3} which is exactly the shared secret.
+-}
+
+----------------------------------------------------------------------------
+-- 6.49 Identity-based encryption
+----------------------------------------------------------------------------
+
+{-
+(a) If Eve can solve ECDLP, then she retrieves s directly from P^{Tom}
+    = sP, because P is known. If she can break DLP in F_q, she can
+    still solve DLP for e(P^{Tom},P) = e(P,P)^r.
+
+(b) If eve can only solve ECDHP, then she can take C1 = rP and P^{Tom} = sP,
+    forge rsP and pass it to e(P^{Alice},rsP) = e(Q^{Alice},C1) that Alice
+    uses to decrypt messages.
+
+(c) Yes. Combine e(P^{Alice},rP) = G^r and e(P^{Alice},sP) = G^s to get
+    G^sr = e(P^Alice,rsP).
+-}
