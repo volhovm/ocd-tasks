@@ -8,6 +8,8 @@ module Lib.Vector
        ( Vect (..)
        , vzero
        , vplus
+       , vneg
+       , vminus
        , dot
        , scal
        , vlen
@@ -32,6 +34,12 @@ import Lib.Field
 -- Vectors
 ----------------------------------------------------------------------------
 
+{-
+Notice: implementing AGroup for vectors is possible, but it requires lifting
+information about vector size to the type (because we should know how many
+elements to generate in f0). Instead, I provide a set of ad-hoc methods.
+-}
+
 data Vect f = Vect { unVect ::  [f] } deriving (Eq,Ord,Show,Foldable)
 
 vzero :: AGroup f => Integer -> Vect f
@@ -39,6 +47,12 @@ vzero n = Vect $ replicate (fromIntegral n) f0
 
 vplus :: AGroup f => Vect f -> Vect f -> Vect f
 vplus (Vect a) (Vect b) = Vect $ zipWith (<+>) a b
+
+vneg :: AGroup f => Vect f -> Vect f
+vneg (Vect a) = Vect $ map fneg a
+
+vminus :: AGroup f => Vect f -> Vect f -> Vect f
+vminus a b = a `vplus` (vneg b)
 
 dot :: Ring f => Vect f -> Vect f -> f
 dot (Vect a) (Vect b) = foldl' (<+>) f0 (zipWith (<*>) a b)
