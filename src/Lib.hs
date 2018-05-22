@@ -4,3 +4,4 @@ module Lib
 
 import Lib.Field as Export
 import Lib.Misc as Export
+import Lib.Vector as Export

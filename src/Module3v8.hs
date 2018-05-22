@@ -13,8 +13,8 @@ import System.Random (randomRIO)
 
 import Lib
 
-mToZ :: forall n. (KnownNat n) => [[Integer]] -> Matrix (Z n)
-mToZ = Matrix . map (map $ toZ @n)
+mToZ :: forall i. (KnownNat i) => [[Integer]] -> Matrix (Z i)
+mToZ = Matrix . map (map (toZ @i))
 
 testGauss :: IO ()
 testGauss = putStrLn $ showMatrix $ gaussSolve m

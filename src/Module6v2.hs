@@ -8,6 +8,7 @@ import Universum
 
 import Lib.Elliptic
 import Lib.Field
+import Lib.Vector
 
 ----------------------------------------------------------------------------
 -- 6.5

@@ -27,6 +27,7 @@ module Lib.Field
     , gcdEucl
     , extendedEucl
 
+    , natValI
     , Z (..)
     , toZ
     , PrimeNat
@@ -46,16 +47,13 @@ module Lib.Field
     , irreducablePoly
     , invFinPolyFermat
 
-    , Matrix (..)
-    , showMatrix
-    , gaussSolve
     ) where
 
 import qualified Prelude
 import Universum hiding (head, (<*>))
 
-import Control.Lens (ix, (%=), (.=))
-import Data.List (head, last, (!!))
+import Control.Lens (ix)
+import Data.List (last, (!!))
 import qualified Data.List as L
 
 ----------------------------------------------------------------------------
@@ -182,7 +180,7 @@ instance Ring Integer where
     (<*>) = (*)
 
 ----------------------------------------------------------------------------
--- Double
+-- Double/rational
 ----------------------------------------------------------------------------
 
 instance AGroup Double where
@@ -195,6 +193,19 @@ instance Ring Double where
     (<*>) = (*)
 
 instance Field Double where
+    finv x = 1/x
+
+
+instance AGroup Rational where
+    f0 = 0
+    (<+>) = (+)
+    fneg = negate
+
+instance Ring Rational where
+    f1 = 1
+    (<*>) = (*)
+
+instance Field Rational where
     finv x = 1/x
 
 ----------------------------------------------------------------------------
@@ -541,82 +552,10 @@ _testFinPolys = do
     print $ y
     print $ z <*> y
 
-----------------------------------------------------------------------------
--- Matrices
-----------------------------------------------------------------------------
-
--- | Row dominated matrix
-newtype Matrix a = Matrix { unMatrix :: [[a]] } deriving (Show,Functor,Eq)
-
--- | Matrix is row-dominated.
-showMatrix :: (Show a) => Matrix a -> String
-showMatrix (Matrix m) = L.unlines $ map (intercalate " " . map show) m
-
--- | You pass linear system [A|b], where A is n×n and get list of
--- solutions.
-gaussSolve :: forall a. (FField a) => Matrix a -> Matrix a
-gaussSolve (Matrix m0)
-    | n > m = error "gaussSolve: n > m"
-    | otherwise = Matrix $ execState (diagonal1 >> diagonal2) m1
-  where
-    ix2 :: Int -> Int -> State [[a]] a
-    ix2 i j = do (x :: [a]) <- use (ix i)
-                 pure $ x !! j
-
-    n = length m0
-    m = length $ head m0
-
-    diagonal1 :: State [[a]] ()
-    diagonal1 = forM_ [0..(n-1)] $ \(i::Int) -> do
-        -- Dividing by diagonal coefficient
-        k0 <- ix2 i i
-        -- If we're encountered empty row, we swap it with the first
-        -- non-zero row. If there is no, we fail.
-        k <- if k0 /= f0 then pure k0 else do
-                 otherCoeffs <- forM [i+1..(n-1)] $ \j -> (j,) <$> ix2 j i
-                 let alt = find (\(_,v) -> v /= f0) otherCoeffs
-                 case alt of
-                     Nothing -> error "Empty line, can't swap"
-                     Just (j,k') -> do
-                         rowJ <- use (ix j)
-                         rowI <- use (ix i)
-                         ix i .= rowI
-                         ix j .= rowJ
-                         pure k'
-
-        let km1 = finv k
-        forM_ [i..(m-1)] $ \j -> (ix i . ix j) %= (<*> km1)
-
-        -- For all lower levels, adding
-        forM_ [i+1..(n-1)] $ \j -> do
-            s <- ix2 j i
-            forM_ [i..m] $ \y -> do
-                x <- ix2 i y
-                ix j . ix y %= (\e -> e <-> (s <*> x))
-
-    diagonal2 :: State [[a]] ()
-    diagonal2 = forM_ (reverse [0..(n-1)]) $ \(i::Int) -> do
-        -- For all upper levels, adding
-        forM_ [0..i-1] $ \j -> do
-            s <- ix2 j i
-            forM_ [i..(m-1)] $ \y -> do
-                x <- ix2 i y
-                ix j . ix y %= (\e -> e <-> (s <*> x))
-
-    initialSort :: [[a]] -> [[a]]
-    initialSort = sortBy (comparing $ length . takeWhile (== f0))
-
-    m1 :: [[a]]
-    m1 = initialSort m0
 
 ----------------------------------------------------------------------------
 -- TODO Move to test modules
 ----------------------------------------------------------------------------
-
-_testGauss :: IO ()
-_testGauss = print $ gaussSolve m
-  where
-    (m :: Matrix (Z 9539)) = Matrix $ map (map toZ) [[2,6,1,3030,1],[11,2,0,6892,2],[4,1,3,18312,3]]
 
 _testGenerators :: IO ()
 _testGenerators = do
