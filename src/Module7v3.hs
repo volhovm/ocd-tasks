@@ -18,22 +18,6 @@ import Lib.Vector
 
 express :: Field f => [[f]] -> [f] -> [f]
 express base x = map L.last $ unMatrix $ gaussSolve $ mtranspose $ Matrix $ base ++ [x]
-    {-
-    traceShow (take 15 es) $
-    traceShow (take 800 allCombs) $
-    fromMaybe (error "kek...") $
-    find (\c -> let s = foldl1 vplus (map (uncurry scal) $ c `zip` base)
-                in --traceShow s $
-                   s == x) allCombs
-  where
-    es :: [Double]
-    es = 0 : concat [[e,-e] | e <- [1..] ]
-    allCombs :: [[Double]]
-    allCombs = L.nub $ allCombsGo 1
-      where
-        allCombsGo m = replicateM n (take m es) ++ allCombsGo (m+1)
-    n = length base
-    -}
 
 e75 :: IO ()
 e75 = do
