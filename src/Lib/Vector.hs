@@ -14,10 +14,19 @@ module Lib.Vector
        , scal
        , vlen
        , angle
+       , express
+       , expressBase
 
        , Matrix (..)
        , showMatrix
+       , msize
+       , mscal
        , mtranspose
+       , mmul
+       , minor
+       , determinant
+       , cofactor
+       , adjunct
        , gaussSolve
        ) where
 
@@ -66,19 +75,79 @@ vlen = sqrt . sum . map (sqr . realToFrac) . unVect where sqr x = x * x
 angle :: (Ring f, Real f) => Vect f -> Vect f -> Double
 angle x y = acos $ realToFrac (dot x y) / (vlen x * vlen y)
 
+express :: Field f => [Vect f] -> Vect f -> Vect f
+express (map unVect -> base) (unVect -> x) =
+    Vect $ map L.last $ unMatrix $ gaussSolve $ mtranspose $ Matrix $ base ++ [x]
+
+expressBase :: Field f => [Vect f] -> [Vect f] -> [Vect f]
+expressBase base base' = map (express base) base'
+
 ----------------------------------------------------------------------------
 -- Matrices
 ----------------------------------------------------------------------------
 
--- | Row dominated matrix
+-- | Row dominated 2d matrix.
 newtype Matrix a = Matrix { unMatrix :: [[a]] } deriving (Show,Eq)
-
-mtranspose :: Matrix a -> Matrix a
-mtranspose = Matrix . L.transpose . unMatrix
 
 -- | Matrix is row-dominated.
 showMatrix :: (Show a) => Matrix a -> String
 showMatrix (Matrix m) = L.unlines $ map (intercalate " " . map show) m
+
+-- | Scalar matrix multiplication
+mscal :: Ring a => a -> Matrix a -> Matrix a
+mscal k (Matrix m) = Matrix $ map (\r -> map (<*> k) r) m
+
+-- | Matrix (n,m) size.
+msize :: Matrix a -> (Int,Int)
+msize (Matrix l) = (length l, length (head l))
+
+-- | Matrix transpose.
+mtranspose :: Matrix a -> Matrix a
+mtranspose = Matrix . L.transpose . unMatrix
+
+-- | Matrix multiplication
+mmul :: forall a. Ring a => Matrix a -> Matrix a -> Matrix a
+mmul x@(Matrix rows1) y =
+    if m1 /= n2 then error "mmul wrong argument sizes"
+    else let foo :: Int -> Int -> a
+             foo i j = (Vect (rows1 !! i) :: Vect a) `dot` (Vect $ rows2 !! j)
+         in Matrix $ map (\i -> map (\j -> foo i j) [0..m2-1]) [0..n1-1]
+  where
+    (n1,m1) = msize x
+    (n2,m2) = msize y
+    (Matrix rows2) = mtranspose y
+
+-- | Matrix minor.
+minor :: Matrix a -> Int -> Int -> Matrix a
+minor (Matrix rows) i j = Matrix $ map (dropAround j) $ dropAround i rows
+  where
+    dropAround 0 l = drop 1 l
+    dropAround k l | k == length l - 1 = take (length l - 1) l
+    dropAround k l = take k l <> drop (k+1) l
+
+-- | Matrix's determinant. Works only for square matrices.
+determinant :: Ring a => Matrix a -> a
+determinant (Matrix s) | length s /= length (head s) = error "determinant: matrix is not square"
+determinant (Matrix [[x]]) = x
+determinant m@(Matrix rows) =
+    foldr1 (<+>) $
+    map (\((e,k),i) -> k <*> e <*> determinant (minor m 0 i))
+        ((head rows `zip` cycle [f1,fneg f1]) `zip` [0..])
+
+-- | Cofactor matrix.
+cofactor :: Ring a => Matrix a -> Matrix a
+cofactor m@(Matrix rows) =
+    Matrix $
+    map (\i -> map (\j -> ij i j <*> determinant (minor m i j))
+                   [0 .. (length (head rows) - 1)])
+        [0 .. (length rows - 1)]
+  where
+    ij i j | even (i + j) = f1
+           | otherwise = fneg f1
+
+-- | Adjunct matrix.
+adjunct :: Ring a => Matrix a -> Matrix a
+adjunct = mtranspose . cofactor
 
 -- | You pass linear system [A|b], where A is n×n and get list of
 -- solutions.

@@ -6,9 +6,6 @@ module Module7v3 () where
 
 import Universum
 
-import qualified Data.List as L
-
-import Lib.Field
 import Lib.Misc (combinations)
 import Lib.Vector
 
@@ -16,19 +13,15 @@ import Lib.Vector
 -- 7.5
 ----------------------------------------------------------------------------
 
-express :: Field f => [[f]] -> [f] -> [f]
-express base x = map L.last $ unMatrix $ gaussSolve $ mtranspose $ Matrix $ base ++ [x]
 
 e75 :: IO ()
 e75 = do
-    let base :: [[Rational]]
-        base = [[1,3,2], [2,-1,3], [1,0,2]]
-    let base2 :: [[Rational]]
-        base2 = [[-1,0,2], [3,1,-1], [1,0,1]]
+    let base = map Vect [[1,3,2], [2,-1,3], [1,0,2]] :: [Vect Rational]
+    let base2 = map Vect [[-1,0,2], [3,1,-1], [1,0,1]] :: [Vect Rational]
     putText "B' in B"
-    print $ map (express base) base2
+    print $ expressBase base base2
     putText "B in B'"
-    print $ map (express base2) base
+    print $ expressBase base2 base
 
     let v :: Vect Rational
         v = Vect [2,3,1]
