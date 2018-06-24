@@ -5,6 +5,7 @@
 {-# LANGUAGE DeriveFunctor       #-}
 {-# LANGUAGE MonoLocalBinds      #-}
 {-# LANGUAGE MultiWayIf          #-}
+{-# LANGUAGE TypeFamilies        #-}
 {-# LANGUAGE TypeInType          #-}
 
 -- | Finite fields and stuff. TODO rename/decouple it.
@@ -54,7 +55,7 @@ module Lib.Field
 import qualified Prelude
 import Universum hiding (head, (<*>))
 
-import Control.Lens (ix)
+import Control.Lens (ix, makeWrapped)
 import Data.List (last, (!!))
 import qualified Data.List as L
 
@@ -218,20 +219,8 @@ instance Field Rational where
     finv x = 1/x
 
 ----------------------------------------------------------------------------
--- Finite integer ring/field
+-- Prime nats
 ----------------------------------------------------------------------------
-
-natValI :: forall n. KnownNat n => Integer
-natValI = toInteger $ natVal (Proxy @n)
-
--- Z/nZ
-newtype Z (a :: Nat) = Z { unZ :: Integer } deriving (Num, Eq, Ord, Enum, Real, Integral, Generic, Hashable)
-
-instance Show (Z a) where
-    show (Z i) = show i
-
-toZ :: forall n . (KnownNat n) => Integer -> Z n
-toZ i = Z $ i `mod` (natValI @n)
 
 class KnownNat n => PrimeNat (n :: Nat)
 
@@ -276,19 +265,46 @@ DefPrime(3221)
 DefPrime(9539)
 DefPrime(17389)
 
+----------------------------------------------------------------------------
+-- Z/mZ
+----------------------------------------------------------------------------
+
+natValI :: forall n. KnownNat n => Integer
+natValI = toInteger $ natVal (Proxy @n)
+
+-- Z/nZ
+newtype Z (a :: Nat) = Z
+    { unZ :: Integer
+    } deriving (Eq, Ord, Enum, Generic, Hashable)
+$(makeWrapped ''Z)
+
+instance Show (Z a) where
+    show (Z i) = show i
+
+toZ :: forall n . (KnownNat n) => Integer -> Z n
+toZ i = Z $ i `mod` (natValI @n)
+
+instance (KnownNat n) => Num (Z n) where
+    (Z a) + (Z b) = toZ $ a + b
+    (Z a) * (Z b) = toZ $ a * b
+    negate (Z 0) = Z 0
+    negate (Z i) = toZ $ natValI @n - i
+    fromInteger = toZ
+    signum (Z a) = if a == 0 then 0 else 1
+    abs = identity
+
 instance (KnownNat n) => AGroup (Z n) where
     f0 = Z 0
-    (Z a) <+> (Z b) = toZ $ a + b
-    fneg (Z 0) = Z 0
-    fneg (Z i) = toZ $ natValI @n - i
+    (<+>) = (+)
+    fneg = negate
 
 instance (KnownNat n) => Ring (Z n) where
     f1 = Z 1
-    (Z a) <*> (Z b) = toZ $ a * b
-
+    (<*>) = (*)
 
 instance (PrimeNat n) => Field (Z n) where
     finv (Z a) = toZ $ a `fastExp` (natValI @n - 2)
+
 instance (PrimeNat n) => FField (Z n) where
     getFieldSize _ = natValI @n
     allElems = map toZ $ [0..(natValI @n - 1)]

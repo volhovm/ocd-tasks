@@ -207,10 +207,10 @@ ecRhoGo p q k =
 
     n = ecGroupSize @(Z i)
 
-    inS1 (EC x y) = (x + y) `mod` 3 == 0
-    inS1 _        = False
-    inS2 (EC x y) = (x + y) `mod` 3 == 1
-    inS2 _        = False
+    inS1 (EC (Z x) (Z y)) = (x + y) `mod` 3 == 0
+    inS1 _                = False
+    inS2 (EC (Z x) (Z y)) = (x + y) `mod` 3 == 1
+    inS2 _                = False
 
 {-
     m :: Z i

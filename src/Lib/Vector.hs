@@ -268,7 +268,6 @@ gaussSolveSystem m (unVect -> x) =
 -- Garbage
 ----------------------------------------------------------------------------
 
--- TODO FIXME something is broken
 _testGauss :: IO ()
 _testGauss = do
     let s1 = gaussSolveSystem m $ fromList [3030,6892,18312] -- this doesn't
