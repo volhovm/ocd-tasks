@@ -10,11 +10,12 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Lib
-                     , Lib.Field
-                     , Lib.Vector
-                     , Lib.Misc
                      , Lib.Elliptic
                      , Lib.EllipticFull
+                     , Lib.Field
+                     , Lib.Lattice
+                     , Lib.Misc
+                     , Lib.Vector
 
                      , Module1v1
                      , Module1v2
@@ -60,6 +61,7 @@ library
                      , Module7v2
                      , Module7v3
                      , Module7v4
+                     , Module7v5
   build-depends:       base >=4.9 && <4.11
                      , bytestring >=0.10
                      , containers >= 0.5.7.1

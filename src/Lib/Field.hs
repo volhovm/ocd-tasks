@@ -26,6 +26,7 @@ module Lib.Field
     , findGenerator
     , gcdEucl
     , extendedEucl
+    , findRoots
 
     , natValI
     , Z (..)
@@ -34,6 +35,7 @@ module Lib.Field
     , Poly(..)
     , prettyPoly
     , deg
+    , applyPoly
     , euclPoly
     , FinPoly (..)
     , FinPolyZ
@@ -76,28 +78,35 @@ class Eq a => AGroup a where
     infixl 6 `times`
     times :: Integer -> a -> a
     default times :: Integer -> a -> a
-    times = fastTimes
+    times = fastTimes f0 fneg (<+>)
 
 infixl 5 <->
 (<->) :: AGroup a => a -> a -> a
 (<->) a b = a <+> (fneg b)
 
+-- These functions are implemented w/o typeclass for flexibility --
+-- there are also other parts of lib (like, vectors) that don't use
+-- AGroup, but would like to have 'times'.
 -- | Slow linear "times" implementation.
-linearTimes :: forall a. (AGroup a) => Integer -> a -> a
-linearTimes n a = foldl' (<+>) f0 $ replicate (fromIntegral n) a
+linearTimes :: forall x. x -> (x -> x) -> (x -> x -> x) -> Integer -> x -> x
+linearTimes z neg add n0 a0 = go n
+  where
+    (n,a) = if n0 < 0 then (negate n0, neg a0) else (n0,a0)
+    -- because folds imply construction of a (potentially long) list
+    go m = if m == 0 then z else add a (go (m-1))
 
 -- | Double-and-add.
-fastTimes :: forall a. (AGroup a) => Integer -> a -> a
-fastTimes n0 a = tms n0
+fastTimes :: a -> (a -> a) -> (a -> a -> a) -> Integer -> a -> a
+fastTimes z neg add n0 a0 = tms n
   where
-    tms :: Integer -> a
-    tms 0 = f0
+    (n,a) = if n0 < 0 then (negate n0, neg a0) else (n0,a0)
+    tms 0 = z
     tms 1 = a
-    tms n = do
-        let (ndiv,nmod) = n `divMod` 2
-        let nnext = tms ndiv
-        if | nmod == 0 -> nnext <+> nnext
-           | otherwise -> nnext <+> nnext <+> a
+    tms m = do
+        let (mdiv,mmod) = m `divMod` 2
+        let mnext = tms mdiv
+        if | mmod == 0 -> mnext `add` mnext
+           | otherwise -> mnext `add` mnext `add` a
 
 class (Eq a, AGroup a) => Ring a where
     f1 :: a
@@ -325,6 +334,12 @@ instance (AGroup a) => Eq (Poly a) where
 deg ::  (Ring a, Integral n) => Poly a -> n
 deg (stripZ -> (Poly p)) = fromIntegral $ length p - 1
 
+applyPoly :: (FField a) => Poly a -> a -> a
+applyPoly (stripZ -> (Poly p)) v =
+    foldr (<+>) f0 $
+        map (\(b,i) -> b <*> (v <^> (i::Integer)))
+            (reverse p `zip` [0..])
+
 -- Zips two lists adding zeroes to end of the shortest one
 zip0 :: (AGroup a) => [a] -> [a] -> [(a,a)]
 zip0 p1 p2 = uncurry zip sameSize
@@ -428,6 +443,15 @@ extendedEucl a b =
          | a `eMod` g /= f0 -> error "extendedEucl is broken 2"
          | b `eMod` g /= f0 -> error "extendedEucl is broken 3"
          | otherwise -> res
+
+findRoots :: forall a. (FField a) => Poly a -> [a]
+findRoots x = go elems0 x
+  where
+    go [] _ = []
+    go (e:es) p = let y = Poly [f1,f0] <-> Poly [e]
+                      (q,r) = p </> y
+                  in if r == f0 then e : go (e:es) q else go es p
+    elems0 = allElems @a
 
 ----------------------------------------------------------------------------
 -- Polynomials quotieng rings/fields

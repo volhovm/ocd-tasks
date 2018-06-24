@@ -8,6 +8,7 @@ import Universum
 
 import Data.List ((!!))
 
+import Lib.Lattice
 import Lib.Vector
 
 ----------------------------------------------------------------------------
@@ -106,10 +107,10 @@ e712 = do
             let d = determinant x
             print a
             print d
-            print $ a `mmul` x
+            print $ a `mmulm` x
             let xinv = d `mscal` a
             print $ xinv
-            print $ x `mmul` xinv
+            print $ x `mmulm` xinv
             putText ""
 
     let a = Matrix [[3,1],[2,2]] :: Matrix Integer
@@ -157,7 +158,7 @@ e713 = do
     let base2 = map Vect [[4,-2,3],[6,6,-6],[-2,-4,7]] :: [Vect Rational]
     let testBase base' = do
             let t = expressBase base base'
-            print $ determinant $ Matrix $ map unVect t
+            print $ latticeDet t
     testBase base1
     testBase base2
 

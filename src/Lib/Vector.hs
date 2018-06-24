@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds      #-}
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveFunctor  #-}
+{-# LANGUAGE TypeFamilies   #-}
 
 -- | Vector arithmetic. TODO make up a better API.
 
@@ -10,32 +11,37 @@ module Lib.Vector
        , vplus
        , vneg
        , vminus
+       , vtimes
        , dot
        , scal
        , vlen
+       , vdim
        , angle
-       , express
-       , expressBase
 
        , Matrix (..)
+       , mToVecs
+       , mFromVecs
        , showMatrix
        , msize
        , mscal
        , mtranspose
-       , mmul
+       , vmulm
+       , mmulm
        , minor
        , determinant
        , cofactor
        , adjunct
        , gaussSolve
+       , gaussSolveSystem
        ) where
 
 
 import Universum hiding (head, (<*>))
 
-import Control.Lens (ix, (%=), (.=))
+import Control.Lens (each, ix, makeWrapped, (%=), (.=), _Wrapped)
 import Data.List (head, (!!))
 import qualified Data.List as L
+import GHC.Exts (IsList (..))
 
 import Lib.Field
 
@@ -50,6 +56,15 @@ elements to generate in f0). Instead, I provide a set of ad-hoc methods.
 -}
 
 data Vect f = Vect { unVect ::  [f] } deriving (Eq,Ord,Show,Foldable)
+$(makeWrapped ''Vect)
+
+instance IsList (Vect f) where
+    type Item (Vect f) = f
+    toList = unVect
+    fromList = Vect
+
+instance Functor Vect where
+    fmap func v = v & _Wrapped %~ fmap func
 
 vzero :: AGroup f => Integer -> Vect f
 vzero n = Vect $ replicate (fromIntegral n) f0
@@ -63,24 +78,27 @@ vneg (Vect a) = Vect $ map fneg a
 vminus :: AGroup f => Vect f -> Vect f -> Vect f
 vminus a b = a `vplus` (vneg b)
 
+vtimes :: AGroup f => Integer -> Vect f -> Vect f
+vtimes n v = fastTimes z vneg vplus n v
+  where
+    z = vzero (fromIntegral $ length v)
+
 dot :: Ring f => Vect f -> Vect f -> f
 dot (Vect a) (Vect b) = foldl' (<+>) f0 (zipWith (<*>) a b)
 
 scal :: (Ring f) => f -> Vect f -> Vect f
 scal k v = Vect $ map (k <*>) $ unVect v
 
+-- | Euclidian distance.
 vlen :: Real f => Vect f -> Double
 vlen = sqrt . sum . map (sqr . realToFrac) . unVect where sqr x = x * x
 
+-- | Vector dimension
+vdim :: Vect f -> Integer
+vdim = fromIntegral . length . unVect
+
 angle :: (Ring f, Real f) => Vect f -> Vect f -> Double
 angle x y = acos $ realToFrac (dot x y) / (vlen x * vlen y)
-
-express :: Field f => [Vect f] -> Vect f -> Vect f
-express (map unVect -> base) (unVect -> x) =
-    Vect $ map L.last $ unMatrix $ gaussSolve $ mtranspose $ Matrix $ base ++ [x]
-
-expressBase :: Field f => [Vect f] -> [Vect f] -> [Vect f]
-expressBase base base' = map (express base) base'
 
 ----------------------------------------------------------------------------
 -- Matrices
@@ -88,6 +106,16 @@ expressBase base base' = map (express base) base'
 
 -- | Row dominated 2d matrix.
 newtype Matrix a = Matrix { unMatrix :: [[a]] } deriving (Show,Eq)
+$(makeWrapped ''Matrix)
+
+instance Functor Matrix where
+    fmap func v = v & _Wrapped . each . each %~ func
+
+mFromVecs :: [Vect a] -> Matrix a
+mFromVecs = Matrix . map unVect
+
+mToVecs :: Matrix a -> [Vect a]
+mToVecs = map Vect . unMatrix
 
 -- | Matrix is row-dominated.
 showMatrix :: (Show a) => Matrix a -> String
@@ -97,6 +125,18 @@ showMatrix (Matrix m) = L.unlines $ map (intercalate " " . map show) m
 mscal :: Ring a => a -> Matrix a -> Matrix a
 mscal k (Matrix m) = Matrix $ map (\r -> map (<*> k) r) m
 
+vmulm :: Ring a => Vect a -> Matrix a -> Vect a
+vmulm (Vect v) (Matrix m) = Vect $ map (product' v) (transpose m)
+  where
+    product' a b = foldl' (<+>) f0 (zipWith (<*>) a b)
+
+-- | Matrix multiplication
+mmulm :: Ring a => Matrix a -> Matrix a -> Matrix a
+mmulm m1 m2 =
+    if snd (msize m1) /= fst (msize m2)
+    then error $ "mmulm dimensions: " <> show (msize m1, msize m2)
+    else mtranspose $ m1 & _Wrapped %~ map (\v -> unVect $ (Vect v) `vmulm` m2)
+
 -- | Matrix (n,m) size.
 msize :: Matrix a -> (Int,Int)
 msize (Matrix l) = (length l, length (head l))
@@ -105,7 +145,7 @@ msize (Matrix l) = (length l, length (head l))
 mtranspose :: Matrix a -> Matrix a
 mtranspose = Matrix . L.transpose . unMatrix
 
--- | Matrix multiplication
+{-
 mmul :: forall a. Ring a => Matrix a -> Matrix a -> Matrix a
 mmul x@(Matrix rows1) y =
     if m1 /= n2 then error "mmul wrong argument sizes"
@@ -116,6 +156,7 @@ mmul x@(Matrix rows1) y =
     (n1,m1) = msize x
     (n2,m2) = msize y
     (Matrix rows2) = mtranspose y
+-}
 
 -- | Matrix minor.
 minor :: Matrix a -> Int -> Int -> Matrix a
@@ -206,13 +247,34 @@ gaussSolve (Matrix m0)
     m1 :: [[a]]
     m1 = initialSort m0
 
+-- | v * X = y, solves for v
+gaussSolveSystem :: forall a. (Field a) => Matrix a -> Vect a -> Vect a
+gaussSolveSystem m (unVect -> x) =
+    case () of
+      () | length res /= length (head (unMatrix m)) -> error "gaussSolveSystem: dimensions"
+         | not check -> error "gaussSolveSystem: failed"
+         | otherwise -> Vect res
+  where
+    m' = Matrix $ map (\(r,v) -> r ++ [v]) $ unMatrix m `zip` x
+    res = map L.last $ unMatrix $ gaussSolve m'
+    check = all (\(r,v) -> foldr1 (<+>) (map (uncurry (<*>)) $ r `zip` res) == v)
+                (unMatrix m `zip` x)
+
+----------------------------------------------------------------------------
+-- More vectors (because TH doesn't let me define it in arbitrary order)
+----------------------------------------------------------------------------
+
 ----------------------------------------------------------------------------
 -- Garbage
 ----------------------------------------------------------------------------
 
+-- TODO FIXME something is broken
 _testGauss :: IO ()
-_testGauss = print $ gaussSolve m
+_testGauss = do
+    let s1 = gaussSolveSystem m $ fromList [3030,6892,18312] -- this doesn't
+    let s2 = gaussSolveSystem m $ fromList [2,2,3] -- this works
+    print s1
+    print s2
   where
     (m :: Matrix (Z 9539)) =
-        Matrix $ map (map toZ)
-        [[2,6,1,3030,1],[11,2,0,6892,2],[4,1,3,18312,3]]
+        Matrix $ map (map toZ) [[2,6,1],[11,2,0],[4,1,3]]

@@ -6,6 +6,7 @@ module Module7v3 () where
 
 import Universum
 
+import Lib.Lattice
 import Lib.Misc (combinations)
 import Lib.Vector
 
