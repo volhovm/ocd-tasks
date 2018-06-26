@@ -11,7 +11,7 @@ import Lib.Lattice
 import Lib.Vector
 
 ----------------------------------------------------------------------------
--- 7.16 Babai's algorithm
+-- 7.17 Babai's algorithm
 ----------------------------------------------------------------------------
 
 babaiSolve :: [Vect Integer] -> Vect Integer -> Vect Integer

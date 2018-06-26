@@ -63,9 +63,17 @@ Sadly, we can't compute the Hadamard ratio since the basis is not given.
 Minkowski theorem (with hypercube model) gives us the upper estimate:
 √n * det(L)^{1/n} = sqrt(251) * 2^{2251.58 / 251} = 7947.084
 
+Prelude> sqrt 251 * (2 ** (2251.58 / 251))
+7947.084802326376
+
 The Gaussian Heuristic:
 
 Approximate: 3845.925
+sqrt(2n/(pi*e)) * det(L)^{1/n}
+
+Prelude> sqrt (2 * 251 / 2.71828 / pi) * (2 ** (2251.58 / 251))
+3845.925028353717
+
 Exact (with Γ): 3897.37
 
 -}
