@@ -66,7 +66,7 @@ Minkowski theorem (with hypercube model) gives us the upper estimate:
 Prelude> sqrt 251 * (2 ** (2251.58 / 251))
 7947.084802326376
 
-The Gaussian Heuristic:
+The Gaussian approximation (upper bound):
 
 Approximate: 3845.925
 sqrt(2n/(pi*e)) * det(L)^{1/n}
@@ -75,5 +75,12 @@ Prelude> sqrt (2 * 251 / 2.71828 / pi) * (2 ** (2251.58 / 251))
 3845.925028353717
 
 Exact (with Γ): 3897.37
+
+Gaussian heuristics:
+
+sqrt(251 / (2 * pi * e))* (detL)^{1/251}
+
+Prelude> sqrt(251 / (2 * pi * 2.71828))* (2 ** (2251.58 / 251))
+1922.9625141768588
 
 -}
