@@ -22,9 +22,12 @@ module Lib.Vector
        , mToVecs
        , mFromVecs
        , showMatrix
+       , mNull
+       , mId
        , msize
-       , mscal
        , mtranspose
+       , maddm
+       , mscal
        , vmulm
        , mmulm
        , minor
@@ -111,9 +114,11 @@ $(makeWrapped ''Matrix)
 instance Functor Matrix where
     fmap func v = v & _Wrapped . each . each %~ func
 
+-- | Represent list of vectors as rows of matrix.
 mFromVecs :: [Vect a] -> Matrix a
 mFromVecs = Matrix . map unVect
 
+-- | Convert matrix to list of rows.
 mToVecs :: Matrix a -> [Vect a]
 mToVecs = map Vect . unMatrix
 
@@ -121,10 +126,34 @@ mToVecs = map Vect . unMatrix
 showMatrix :: (Show a) => Matrix a -> String
 showMatrix (Matrix m) = L.unlines $ map (intercalate " " . map show) m
 
+-- | Zero matrix.
+mNull :: Ring a => Int -> Matrix a
+mNull n = Matrix $ replicate n (replicate n f0)
+
+-- | Identity matrix.
+mId :: Ring a => Int -> Matrix a
+mId n = Matrix $ map (\i -> replicate i f0 ++ [f1] ++ replicate (n-i-1) f0) [0..n-1]
+
+-- | Matrix (n,m) size.
+msize :: Matrix a -> (Int,Int)
+msize (Matrix l) = (length l, length (head l))
+
+-- | Matrix transpose.
+mtranspose :: Matrix a -> Matrix a
+mtranspose = Matrix . L.transpose . unMatrix
+
+-- | Matrix addition
+maddm :: AGroup a => Matrix a -> Matrix a -> Matrix a
+maddm m1 m2 =
+    if msize m1 /= msize m2
+    then error $ "maddm dimensions must be equal: " <> show (msize m1, msize m2)
+    else mFromVecs $ map (uncurry vplus) $ mToVecs m1 `zip` mToVecs m2
+
 -- | Scalar matrix multiplication
 mscal :: Ring a => a -> Matrix a -> Matrix a
 mscal k (Matrix m) = Matrix $ map (\r -> map (<*> k) r) m
 
+-- | Multiply vector by matrix.
 vmulm :: Ring a => Vect a -> Matrix a -> Vect a
 vmulm (Vect v) (Matrix m) = Vect $ map (product' v) (transpose m)
   where
@@ -135,28 +164,7 @@ mmulm :: Ring a => Matrix a -> Matrix a -> Matrix a
 mmulm m1 m2 =
     if snd (msize m1) /= fst (msize m2)
     then error $ "mmulm dimensions: " <> show (msize m1, msize m2)
-    else mtranspose $ m1 & _Wrapped %~ map (\v -> unVect $ (Vect v) `vmulm` m2)
-
--- | Matrix (n,m) size.
-msize :: Matrix a -> (Int,Int)
-msize (Matrix l) = (length l, length (head l))
-
--- | Matrix transpose.
-mtranspose :: Matrix a -> Matrix a
-mtranspose = Matrix . L.transpose . unMatrix
-
-{-
-mmul :: forall a. Ring a => Matrix a -> Matrix a -> Matrix a
-mmul x@(Matrix rows1) y =
-    if m1 /= n2 then error "mmul wrong argument sizes"
-    else let foo :: Int -> Int -> a
-             foo i j = (Vect (rows1 !! i) :: Vect a) `dot` (Vect $ rows2 !! j)
-         in Matrix $ map (\i -> map (\j -> foo i j) [0..m2-1]) [0..n1-1]
-  where
-    (n1,m1) = msize x
-    (n2,m2) = msize y
-    (Matrix rows2) = mtranspose y
--}
+    else m1 & _Wrapped %~ map (\v -> unVect $ (Vect v) `vmulm` m2)
 
 -- | Matrix minor.
 minor :: Matrix a -> Int -> Int -> Matrix a

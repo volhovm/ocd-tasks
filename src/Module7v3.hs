@@ -20,7 +20,11 @@ e75 = do
     let base = map Vect [[1,3,2], [2,-1,3], [1,0,2]] :: [Vect Rational]
     let base2 = map Vect [[-1,0,2], [3,1,-1], [1,0,1]] :: [Vect Rational]
     putText "B' in B"
-    print $ expressBase base base2
+    let u1 = expressBase base base2
+    print u1
+    --print $ determinant $ mFromVecs u1
+    --print $ mFromVecs u1 `mmulm` mFromVecs base == mFromVecs base2
+
     putText "B in B'"
     print $ expressBase base2 base
 

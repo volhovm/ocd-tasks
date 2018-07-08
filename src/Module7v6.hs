@@ -2,7 +2,7 @@
 
 -- | Babai's CVP algorithm.
 
-module Module7v6 () where
+module Module7v6 (babaiSolve) where
 
 import Universum
 
@@ -14,20 +14,21 @@ import Lib.Vector
 -- 7.17 Babai's algorithm
 ----------------------------------------------------------------------------
 
-babaiSolve :: [Vect Integer] -> Vect Integer -> Vect Integer
-babaiSolve base w = sol
+babaiSolve :: [Vect Integer] -> Vect Integer -> (Vect Integer, [Integer])
+babaiSolve base w = (sol,ks)
   where
     sol :: Vect Integer
     sol = foldl1 vplus $ map (uncurry vtimes) $ ks `zip` base
+
     -- coefficients
     ks :: [Integer]
     ks =
         map round $
         unVect $
-        gaussSolveSystem (mtranspose $ Matrix $ map (unVect . conv) base)
-                         (conv w)
-    conv :: Vect Integer -> Vect Rational
-    conv = _Wrapped %~ map fromInteger
+        gaussSolveSystem (mtranspose $ Matrix $ map (unVect . conv) base) (conv w)
+      where
+        conv :: Vect Integer -> Vect Rational
+        conv = _Wrapped %~ map fromInteger
 
 e717 :: IO ()
 e717 = do
@@ -35,7 +36,7 @@ e717 = do
     let v2 = Vect [312,105] :: Vect Integer
     let w = Vect [43127,11349] :: Vect Integer
 
-    let v = babaiSolve [v1,v2] w
+    let v = fst $ babaiSolve [v1,v2] w
     putText $ "(a): " <> show v <> ", diff length " <> show (vlen $ v `vminus` w)
 
     let hm = hadamardRatio [v1,v2]
@@ -46,7 +47,7 @@ e717 = do
     let t = expressBaseInt [v1,v2] [v1',v2']
     putText $ "(c) Should be Just: " <> show t
 
-    let v' = babaiSolve [v1',v2'] w
+    let v' = fst $ babaiSolve [v1',v2'] w
     putText $ "(d): " <> show v' <> ", diff length " <> show (vlen $ v' `vminus` w)
 
     let hm' = hadamardRatio [v1',v2']

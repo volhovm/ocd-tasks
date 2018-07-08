@@ -12,6 +12,7 @@
 
 module Lib.Field
     ( AGroup (..)
+    , fabs
     , linearTimes
     , fastTimes
     , Ring(..)
@@ -84,6 +85,10 @@ class Eq a => AGroup a where
 infixl 5 <->
 (<->) :: AGroup a => a -> a -> a
 (<->) a b = a <+> (fneg b)
+
+-- | Absolute value.
+fabs :: (AGroup a, Ord a) => a -> a
+fabs x = if x > f0 then x else fneg x
 
 -- These functions are implemented w/o typeclass for flexibility --
 -- there are also other parts of lib (like, vectors) that don't use
