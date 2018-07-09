@@ -34,6 +34,7 @@ module Lib.Vector
        , determinant
        , cofactor
        , adjunct
+       , minverse
        , gaussSolve
        , gaussSolveSystem
        ) where
@@ -153,10 +154,13 @@ maddm m1 m2 =
 mscal :: Ring a => a -> Matrix a -> Matrix a
 mscal k (Matrix m) = Matrix $ map (\r -> map (<*> k) r) m
 
--- | Multiply vector by matrix.
+-- | Multiply (horisontal) vector by matrix.
 vmulm :: Ring a => Vect a -> Matrix a -> Vect a
-vmulm (Vect v) (Matrix m) = Vect $ map (product' v) (transpose m)
+vmulm (Vect v) m0@(Matrix m)
+    | not sizesMatch = error "vmulm wrong sizes"
+    | otherwise = Vect $ map (product' v) (transpose m)
   where
+    sizesMatch = length v == fst (msize m0)
     product' a b = foldl' (<+>) f0 (zipWith (<*>) a b)
 
 -- | Matrix multiplication
@@ -196,7 +200,20 @@ cofactor m@(Matrix rows) =
 
 -- | Adjunct matrix.
 adjunct :: Ring a => Matrix a -> Matrix a
-adjunct = mtranspose . cofactor
+adjunct x = let res = mtranspose $ cofactor x
+            in if x `mmulm` res == determinant x `mscal` (mId (fst $ msize x))
+               then res
+               else error "adjunct"
+
+-- | Matrix inverse.
+minverse :: forall a. (Field a, Show a) => Matrix a -> Matrix a
+minverse m | n /= k = error "minverse wrong input size"
+           | not valid = error "minverse failed" -- do you use doubles?
+           | otherwise = res
+  where
+    valid = res `mmulm` m == mId n
+    res = (finv (determinant m)) `mscal` adjunct m
+    (n,k) = msize m
 
 -- | You pass linear system [A|b], where A is n×n and get list of
 -- solutions.

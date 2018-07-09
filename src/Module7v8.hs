@@ -86,15 +86,23 @@ genSk n = do
         if hadamardRatio b < 0.5 then genGoodBase else pure b
 
 -- Pass pk, message, and a perturbation vector.
-encodeRaw :: GghPk -> [Integer] -> Vect Integer -> Vect Integer
-encodeRaw GghPk{..} e r =
+encryptRaw :: GghPk -> [Integer] -> Vect Integer -> Vect Integer
+encryptRaw GghPk{..} e r =
     let e' = foldr1 vplus $ map (uncurry scal) $ e `zip` gpBase
     in e' `vplus` r
 
 -- Returns the result and perturbation vector.
-decode :: GghSk -> Vect Integer -> ([Integer], Vect Integer)
-decode GghSk{..} e = let (closest,ks) = babaiSolve gsGoodBase e
-                     in (ks, e `vminus` closest)
+decrypt :: GghSk -> Vect Integer -> ([Integer], Vect Integer)
+decrypt GghSk{..} e =
+    let (closest,_ks) = babaiSolve gsGoodBase e
+
+        msg = lFromRat $ express (map lToRat gsBadBase) (lToRat closest)
+
+        msg' = lFromRat (lToRat closest `vmulm` minverse (lToRat $ mFromVecs gsBadBase))
+
+    in assert "eq" (msg == msg') $ (unVect msg, e `vminus` closest)
+  where
+    assert t x y = if x then y else error $ "assert: " <> t
 
 ----------------------------------------------------------------------------
 -- 7.18
@@ -113,26 +121,26 @@ e718 = do
     putText $ "Hadamard good: " <> show (hadamardRatio b1)
     putText $ "Hadamard bad: " <> show (hadamardRatio b2)
 
+    let e = Vect [155340, 55483]
+
     let u = mFromVecs $
             fromMaybe (error "e718 can't form u") $
             expressBaseInt b1 b2
     let sk = GghSk b1 b2 u
     unless (validateSk sk) $ error "sk is malformed"
 
-    let (ks, r) = decode sk $ Vect [155340, 55483]
+    let (ks, r) = decrypt sk e
     putText $ "Decrypted: " <> show ks
     putText $ "Perturbation: " <> show r
 
-    let hole = hole
-    putText $ "Decrypted with W: " <>
-              show (decode (GghSk b2 hole hole) $ Vect [155340, 55483])
+    let hole = error "e718 hole"
+    putText $ "Decrypted with W: " <> show (decrypt (GghSk b2 b2 hole) e)
 
 {-
-λ> e718
 Determinant: 561
 Hadamard good: 0.7536218249363512
 Hadamard bad: 1.1019992284635005e-3
-Decrypted: [-6823,-3204]
+Decrypted: [8,3]
 Perturbation: Vect {unVect = [4,2]}
 Decrypted with W: ([-8,-23],Vect {unVect = [-11244,-4016]})
 -}
@@ -160,19 +168,18 @@ e719 = do
     unless (validateSk sk) $ error "sk is malformed"
 
     let e = Vect [8930810,-44681748,75192665]
-    let (ks, r) = decode sk e
+    let (ks, r) = decrypt sk e
     putText $ "Decrypted: " <> show ks
     putText $ "Perturbation: " <> show r
 
-    let hole = hole
-    putText $ "Decrypted with W: " <> show (decode (GghSk w hole hole) e)
+    let hole = error "e719"
+    putText $ "Decrypted with W: " <> show (decrypt (GghSk w w hole) e)
 
 {-
-λ> e719
 Determinant: 672858
 Hadamard good: 0.6169653190266731
 Hadamard bad: 2.9999434812456882e-5
-Decrypted: [-334865,-304373,512804]
+Decrypted: [-50,-91,83]
 Perturbation: Vect {unVect = [-10,-3,8]}
 Decrypted with W: ([52,417,-159],Vect {unVect = [31102,-155615,261874]})
 -}
@@ -231,8 +238,8 @@ of the lattice is specific, it may leak information.
 
 (a) Because she can compute e' = m'W + Hash(m').
 
-(b) Since r0 is fixed and public, the process of encryption is still
-deterministic and invertible (xor is invertible), so Alice can decrypt.
+(b) Since xor is invertible the process of encryption is still
+deterministic and also invertible => Alice can decrypt.
 If Eve thinks m0 is m0', she can't check that without the knowledge
 of r0.
 
