@@ -20,6 +20,7 @@ module Lib.Field
     , linearExp
     , fastExp
     , Field(..)
+    , Finite(..)
     , FField(..)
     , Euclidian(..)
     , eDiv
@@ -39,15 +40,21 @@ module Lib.Field
     , deg
     , applyPoly
     , euclPoly
+
+    , represent
+    , representBack
+    , getCoeffPoly
+
+    , PolyDivisor (..)
+    , representConv
+    , representBackConv
+
     , FinPoly (..)
     , FinPolyZ
     , mkFinPoly
     , isPrimePoly
     , FinPolyNats
     , PrimePoly
-    , represent
-    , representBack
-    , getCoeffPoly
     , irreducablePoly
     , invFinPolyFermat
 
@@ -159,21 +166,24 @@ class Ring a => Field a where
     finv :: a -> a
     -- ^ Multiplicative inverse.
 
--- Finite field.
-class Field a => FField a where
-    getGen :: a
-    -- ^ Generator.
+class Eq a => Finite a where
     allElems :: [a]
     -- ^ List all elements.
-    getFieldSize :: Proxy a -> Integer
-    -- ^ Field size.
 
-    default allElems :: [a]
+    default allElems :: FField a => [a]
     allElems =
         let (g :: a) = getGen
             genPowers = iterate (g <*>) g
         -- f0 + powers
         in f0:(dropWhile (/= f1) genPowers)
+
+-- Finite field.
+class (Finite a, Field a) => FField a where
+    getGen :: a
+    -- ^ Generator.
+    getFieldSize :: Proxy a -> Integer
+    -- ^ Field size.
+
 
     default getFieldSize :: Proxy a -> Integer
     getFieldSize _ = fromIntegral $ length (allElems @a)
@@ -238,11 +248,8 @@ class KnownNat n => PrimeNat (n :: Nat)
 
 DefPrime(2)
 DefPrime(3)
-DefPrime(4)
 DefPrime(5)
-DefPrime(6)
 DefPrime(7)
-DefPrime(8)
 DefPrime(9)
 DefPrime(11)
 DefPrime(13)
@@ -310,9 +317,11 @@ instance (KnownNat n) => Ring (Z n) where
 instance (PrimeNat n) => Field (Z n) where
     finv (Z a) = toZ $ a `fastExp` (natValI @n - 2)
 
+instance (PrimeNat n) => Finite (Z n) where
+    allElems = map toZ $ [0..(natValI @n - 1)]
+
 instance (PrimeNat n) => FField (Z n) where
     getFieldSize _ = natValI @n
-    allElems = map toZ $ [0..(natValI @n - 1)]
 
 ----------------------------------------------------------------------------
 -- Polynomials
@@ -393,9 +402,34 @@ instance (Ring a) => Ring (Poly a) where
         in stripZ . Poly $ reverse $ foldl' foldFoo acc0 $ map (,p2) $ withIndex p1
 
 ----------------------------------------------------------------------------
+-- Encoding polynomials
+----------------------------------------------------------------------------
+
+-- | Given a base and number, returns its power representation. Big
+-- endian.
+represent :: Integer -> Integer -> [Integer]
+represent b i = reverse $ go i
+  where go 0 = []
+        go x = (x `mod` b) : (go $ x `div` b)
+
+representBack :: Integer -> [Integer] -> Integer
+representBack b poly = go 1 $ reverse poly
+  where
+    go :: Integer -> [Integer] -> Integer
+    go _ []     = 0
+    go i (x:xs) = (i * x) + go (i * b) xs
+
+reflectCoeffPoly :: forall p n. (KnownNat n, KnownNat p) => Poly Integer
+reflectCoeffPoly = Poly $ represent (natValI @n) (natValI @p)
+
+getCoeffPoly :: forall p n. (KnownNat p, KnownNat n) => Poly (Z n)
+getCoeffPoly = map toZ (reflectCoeffPoly @p @n)
+
+----------------------------------------------------------------------------
 -- Euclidian
 ----------------------------------------------------------------------------
 
+-- | Euclidian rings.
 class Ring a => Euclidian a where
     (</>) :: a -> a -> (a,a)
     -- ^ Division with (quotient,remainder)
@@ -474,29 +508,56 @@ findRoots x = go elems0 x
                   in if r == f0 then e : go (e:es) q else go es p
     elems0 = allElems @a
 
+-- | Class for polynomials that can serve as finite poly field
+-- limiters. For instance,
+class (KnownNat p, KnownNat n) => PolyDivisor p n where
+    pdMod :: Poly (Z n) -> Poly (Z n)
+
+instance {-# OVERLAPPABLE #-}  (KnownNat p, PrimeNat n) => PolyDivisor p n where
+    pdMod x = x `eMod` (getCoeffPoly @p @n)
+
+----------------------------------------------------------------------------
+-- Convolution polynomials (and rings)!
+----------------------------------------------------------------------------
+
+-- Returns the N from the encoded poly or fails.
+representConv :: forall q. KnownNat q => Integer -> Int
+representConv p =
+    if not correctPoly
+    then error "representConv failed: incorrect poly"
+    else length y - 1
+  where
+    y = represent (natValI @q) p
+    correctPoly =
+        L.head y == 1 &&
+        all (== 0) (take (length y - 2) $ L.tail y) &&
+        L.last y == natValI @q - 1
+
+-- Convert N in base (Z q) to encoding of x^N - 1
+representBackConv :: forall q. KnownNat q => Int -> Integer
+representBackConv n = representBack (natValI @q) poly
+  where
+    poly = 1 : replicate (n - 1) 0 ++ [natValI @q - 1]
+
+replaceConv :: forall q f. (KnownNat q, KnownNat f) => Poly (Z f) -> Poly (Z f)
+replaceConv x = res
+  where
+    res = replaceAll x
+    -- N
+    n = representConv @f (natValI @q)
+    replaceAll z0@(Poly z) =
+        let headCoeff = deg z0
+        in if headCoeff < n then z0
+           else replaceAll $ stripZ $ Poly $ L.tail (z & ix n %~ (<+> L.head z))
+
+
+instance {-# OVERLAPS #-} PolyDivisor 349 7 where pdMod = replaceConv @349
+instance {-# OVERLAPS #-} PolyDivisor 1027 4 where pdMod = replaceConv @1027
+instance {-# OVERLAPS #-} PolyDivisor 245 3 where pdMod = replaceConv @245
+
 ----------------------------------------------------------------------------
 -- Polynomials quotieng rings/fields
 ----------------------------------------------------------------------------
-
--- | Given a base and number, returns its power representation. Big
--- endian.
-represent :: Integer -> Integer -> [Integer]
-represent b i = reverse $ go i
-  where go 0 = []
-        go x = (x `mod` b) : (go $ x `div` b)
-
-representBack :: Integer -> [Integer] -> Integer
-representBack b poly = go 1 $ reverse poly
-  where
-    go :: Integer -> [Integer] -> Integer
-    go _ []     = 0
-    go i (x:xs) = (i * x) + go (i * b) xs
-
-reflectCoeffPoly :: forall p n. (KnownNat n, KnownNat p) => Poly Integer
-reflectCoeffPoly = Poly $ represent (natValI @n) (natValI @p)
-
-getCoeffPoly :: forall p n. (KnownNat p, KnownNat n) => Poly (Z n)
-getCoeffPoly = map toZ (reflectCoeffPoly @p @n)
 
 -- Empty polynomial is equivalent for [0]. Head -- higher degree.
 newtype FinPoly (p :: Nat) a = FinPoly { unFinPoly :: Poly a } deriving (Eq,Ord,Generic)
@@ -528,21 +589,22 @@ isPrimePoly p@(Poly pP) =
         lesspolys = map (Poly . map toZ . represent (natValI @n)) [2..(i-1)]
     in all (\pl -> p `eMod` pl /= f0) lesspolys
 
-mkFinPoly :: forall p n . (KnownNat p, PrimeNat n) => Poly (Z n) -> FinPoly p (Z n)
-mkFinPoly x = FinPoly $ (stripZ x) `eMod` getCoeffPoly @p
+mkFinPoly :: forall p n . PolyDivisor p n => Poly (Z n) -> FinPoly p (Z n)
+mkFinPoly x = FinPoly $ pdMod @p (stripZ x)
 
 type FinPolyNats p n = (KnownNat p, PrimeNat n)
 
-instance (FinPolyNats p n) => AGroup (FinPoly p (Z n)) where
+--instance (FinPolyNats p n) => AGroup (FinPoly p (Z n)) where
+instance PolyDivisor p n => AGroup (FinPoly p (Z n)) where
     f0 = mkFinPoly f0
     (<+>) (FinPoly p1) (FinPoly p2) = mkFinPoly (p1 <+> p2)
     fneg (FinPoly p1) = mkFinPoly $ (getCoeffPoly @p) <-> p1
 
-instance (FinPolyNats p n) => Ring (FinPoly p (Z n)) where
+instance PolyDivisor p n => Ring (FinPoly p (Z n)) where
     f1 = mkFinPoly f1
     (<*>) (FinPoly p1) (FinPoly p2) = mkFinPoly (p1 <*> p2)
 
-instance FinPolyNats p n => Euclidian (FinPoly p (Z n)) where
+instance (PolyDivisor p n, PrimeNat n) => Euclidian (FinPoly p (Z n)) where
     (</>) (FinPoly p1) (FinPoly p2) = let (q,r) = p1 </> p2 in (mkFinPoly q, mkFinPoly r)
 
 class FinPolyNats p n => PrimePoly (p :: Nat) (n :: Nat) where
@@ -560,7 +622,13 @@ instance PrimePoly 2210 47
 instance PrimePoly 477482 691
 instance PrimePoly 2968730 1723
 
-invFinPolyFermat :: forall p n. (KnownNat p, PrimeNat n) => FinPoly p (Z n) -> FinPoly p (Z n)
+instance (PolyDivisor p n) => Finite (FinPoly p (Z n)) where
+    allElems = allFinPolys
+
+invFinPolyFermat ::
+       forall p n. (PolyDivisor p n)
+    => FinPoly p (Z n)
+    -> FinPoly p (Z n)
 invFinPolyFermat f =
     let b = fromIntegral (natValI @n) :: Integer
         s = deg (reflectCoeffPoly @p @n) :: Integer
@@ -568,11 +636,12 @@ invFinPolyFermat f =
         res = f <^> (phi - 1) -- because f^φ = 1
     in if res <*> f /= f1 then error "invFinPolyFermat failed" else res
 
+-- Technically we can call invFinPolyFermat with just a PolyDivisor
+-- constraint, but the algorithm will fail, so we require p to be prime.
 instance (PrimePoly p n) => Field (FinPoly p (Z n)) where
     finv = invFinPolyFermat
 
 instance (PrimePoly p n) => FField (FinPoly p (Z n)) where
-    allElems = allFinPolys
     getFieldSize _ =
         let b = fromIntegral (natValI @n) :: Integer
             s = deg (reflectCoeffPoly @p @n) :: Integer
