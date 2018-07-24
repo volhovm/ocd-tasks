@@ -551,9 +551,13 @@ replaceConv x = res
            else replaceAll $ stripZ $ Poly $ L.tail (z & ix n %~ (<+> L.head z))
 
 
-instance {-# OVERLAPS #-} PolyDivisor 349 7 where pdMod = replaceConv @349
-instance {-# OVERLAPS #-} PolyDivisor 1027 4 where pdMod = replaceConv @1027
+instance {-# OVERLAPS #-} PolyDivisor 33 2 where pdMod = replaceConv @33
 instance {-# OVERLAPS #-} PolyDivisor 245 3 where pdMod = replaceConv @245
+instance {-# OVERLAPS #-} PolyDivisor 1027 4 where pdMod = replaceConv @1027
+instance {-# OVERLAPS #-} PolyDivisor 349 7 where pdMod = replaceConv @349
+instance {-# OVERLAPS #-} PolyDivisor 1048591 16 where pdMod = replaceConv @1048591
+instance {-# OVERLAPS #-} PolyDivisor 34359738495 128 where pdMod = replaceConv @34359738495
+instance {-# OVERLAPS #-} PolyDivisor 2910383045673370361331249 3125 where pdMod = replaceConv @2910383045673370361331249
 
 ----------------------------------------------------------------------------
 -- Polynomials quotieng rings/fields

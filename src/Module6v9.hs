@@ -112,7 +112,7 @@ That's why φ(P) can't be a multiple of P and by 6.50(b) we're done.
 -}
 
 e642Check ::
-       forall p n. (PrimePoly p n, HasECParams (FinPolyZ p n))
+       forall p n. (PrimePoly p n, PolyDivisor p n, HasECParams (FinPolyZ p n))
     => Integer
     -> EC (FinPolyZ p n)
     -> Bool
@@ -124,7 +124,7 @@ e642Check l p =
 
 e642 :: IO ()
 e642 = do
-   let solve :: forall p n. (PrimePoly p n) => Integer -> IO ()
+   let solve :: forall p n. (PrimePoly p n, PolyDivisor p n) => Integer -> IO ()
        solve l = withECParams (ECParams (mkFinPoly $ Poly [1]) (mkFinPoly $ Poly [0]) :: ECParams (FinPolyZ p n)) $ do
            let allP = L.delete EC0 (listAllPoints @(FinPolyZ p n))
            let withOrderL = filter (\p -> l `times` p == EC0) allP
