@@ -125,15 +125,12 @@ e726 = do
                            (f1 `notElem` roots)
     solve (mkFinPoly (Poly [1,0,0,8,3]) :: FinPolyZ 161061 11)
     solve (mkFinPoly (Poly [1,0,2,-3]) :: FinPolyZ 371305 13)
-    solve (mkFinPoly (Poly [1,0,2,-3]) :: FinPolyZ 3404825469 23)
 
 {-
 λ> e726
 []
 FinPoly [7,8,3,2,3]
 [1]
-1 in root list, can't take inv
-[1,4,18]
 1 in root list, can't take inv
 -}
 

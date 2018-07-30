@@ -556,6 +556,7 @@ instance {-# OVERLAPS #-} PolyDivisor 245 3 where pdMod = replaceConv @245
 instance {-# OVERLAPS #-} PolyDivisor 1027 4 where pdMod = replaceConv @1027
 instance {-# OVERLAPS #-} PolyDivisor 349 7 where pdMod = replaceConv @349
 instance {-# OVERLAPS #-} PolyDivisor 1048591 16 where pdMod = replaceConv @1048591
+instance {-# OVERLAPS #-} PolyDivisor 3404825469 23 where pdMod = replaceConv @3404825469
 instance {-# OVERLAPS #-} PolyDivisor 34359738495 128 where pdMod = replaceConv @34359738495
 instance {-# OVERLAPS #-} PolyDivisor 2910383045673370361331249 3125 where pdMod = replaceConv @2910383045673370361331249
 
