@@ -140,3 +140,55 @@ NtruMsg (Vect {unVect = [-6,-13,-10,7,-9,-13,14]})
 Vect {unVect = [1,1,-1,-1,0,0,-1]}
 True
 -}
+
+----------------------------------------------------------------------------
+-- 7.31 Expansion ratio
+----------------------------------------------------------------------------
+
+{-
+Initial message m is a center-lift of polynomial in R_p, so its size is
+N * p, while resulting message is a polynomial in R_q, so N * q, which
+means that expansion ratio is q/p. Since q > (6d + 1) p, the ratio is > 6d+1
+which is a pretty big value comparing to other schemes.
+-}
+
+----------------------------------------------------------------------------
+-- 7.32
+----------------------------------------------------------------------------
+
+
+{-
+If p = q, then e(x) = p*h(x)*r(x) + m(x) mod q = m(x).
+If p | q, then q = np and thus n e(x) = n m(x), which reveals m.
+-}
+
+----------------------------------------------------------------------------
+-- 7.33
+----------------------------------------------------------------------------
+
+{-
+It is possible to implement this change of variable, but I doubt the resulting
+matrix can be called simpler.
+-}
+
+----------------------------------------------------------------------------
+-- 7.34
+----------------------------------------------------------------------------
+
+{-
+
+(a) Since m's is center-lifted and p = 3, its coefficients range in {-1,0,1}.
+Hence, if we analyse components of e2-e1 = m2-m1 and see either -2 or 2,
+we're sure that the difference was exactly (-1) - (1) = -2 or (1) - (-1) = 2.
+3^2 = 9, leading to the 2/9 ratio.
+
+(b) 3 coefficients (x^2, x^4, x^5) have a difference of two. N = 8 - 3 learned
+symbols leaves us with 5^3 possibilities.
+
+(c) If we know r, then m = e - phr. e2-e1 = ph(r2-r1). Multiplied by the
+inverse of p modulo q we get h(r2-r1). If h is invertible, then we get
+r2-r1 directly. Otherwise, we compare h' = h(r2-r1) with h. The coefficients
+of h' are in {-2hi, -hi, 0, hi, 2hi}, so given hi' we can deduce the
+(r2-r1)_i anyway.
+
+-}
