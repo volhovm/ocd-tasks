@@ -325,7 +325,7 @@ logDTrialAndError' g h =
     fst $
     fromMaybe (error "logDTrialAndError'") $
     find ((== h) . snd) $
-    map (\x -> (x, g <^> x)) [1..getFieldSize (Proxy @f)]
+    map (\x -> (x, g <^> x)) [1..getOrder @f]
 
 -- This is not a general-purpose MOV, it's optimized for FP645 and is
 -- using the modified pairing instead of searching for T'.

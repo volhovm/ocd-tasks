@@ -21,6 +21,7 @@ module Lib.Field
     , fastExp
     , Field(..)
     , Finite(..)
+    , fermatInverse
     , FField(..)
     , Euclidian(..)
     , eDiv
@@ -36,10 +37,12 @@ module Lib.Field
     , toZ
     , PrimeNat
     , Poly(..)
+    , stripZ
     , prettyPoly
     , deg
     , applyPoly
     , euclPoly
+
 
     , represent
     , representBack
@@ -56,7 +59,7 @@ module Lib.Field
     , FinPolyNats
     , PrimePoly
     , irreducablePoly
-    , invFinPolyFermat
+    , invPolyEuclidian
 
     ) where
 
@@ -169,6 +172,8 @@ class Ring a => Field a where
 class Eq a => Finite a where
     allElems :: [a]
     -- ^ List all elements.
+    getOrder :: Integer
+    -- ^ Return number of elements
 
     default allElems :: FField a => [a]
     allElems =
@@ -177,19 +182,24 @@ class Eq a => Finite a where
         -- f0 + powers
         in f0:(dropWhile (/= f1) genPowers)
 
+    default getOrder :: Integer
+    getOrder = fromIntegral $ length (allElems @a)
+
 -- Finite field.
 class (Finite a, Field a) => FField a where
     getGen :: a
     -- ^ Generator.
-    getFieldSize :: Proxy a -> Integer
-    -- ^ Field size.
-
-
-    default getFieldSize :: Proxy a -> Integer
-    getFieldSize _ = fromIntegral $ length (allElems @a)
 
     default getGen :: a
     getGen = findGenerator (<*>) (L.delete f0 allElems)
+
+-- | Compute inverse using fermat's algorithm. It doesn't work in all
+-- cases, but only for rings where fermat's theorem holds.
+fermatInverse :: forall f. (Finite f, Ring f) => f -> f
+fermatInverse x =
+    let phi = fromInteger $ getOrder @f - 1
+        res = x <^> (phi - 1)
+    in if res <*> x /= f1 then error "fermatInverse failed" else res
 
 ----------------------------------------------------------------------------
 -- Integer
@@ -319,9 +329,9 @@ instance (PrimeNat n) => Field (Z n) where
 
 instance (PrimeNat n) => Finite (Z n) where
     allElems = map toZ $ [0..(natValI @n - 1)]
+    getOrder = natValI @n
 
 instance (PrimeNat n) => FField (Z n) where
-    getFieldSize _ = natValI @n
 
 ----------------------------------------------------------------------------
 -- Polynomials
@@ -475,12 +485,12 @@ instance (Field a) => Euclidian (Poly a) where
 gcdEucl :: (Euclidian a) => a -> a -> a
 gcdEucl a b =
     let res = gcdEuclGo a b
-    in assert (snd (a </> res) == f0) "gcd doesn't divide a" $
-       assert (snd (b </> res) == f0) "gcd doesn't divide a" $
+    in assert (a `eMod` res == f0) "gcd doesn't divide a" $
+       assert (b `eMod` res == f0) "gcd doesn't divide b" $
        res
   where
     gcdEuclGo r0 r1 =
-        let (_,r) = r0 </> r1
+        let r = r0 `eMod` r1
         in if r == f0 then r1 else gcdEuclGo r1 r
 
 -- | For a,b returns (gcd,u,v) such that au + bv = gcd.
@@ -491,6 +501,7 @@ extendedEucl' a b
         let (g,s,t) = extendedEucl (b `eMod` a) a
         in (g, t <-> (b `eDiv` a) <*> s, s)
 
+-- | Extended euclidian algorithm with checks.
 extendedEucl :: (Euclidian n) => n -> n -> (n, n, n)
 extendedEucl a b =
     let res@(g,u,v) = extendedEucl' a b in
@@ -555,8 +566,10 @@ instance {-# OVERLAPS #-} PolyDivisor 33 2 where pdMod = replaceConv @33
 instance {-# OVERLAPS #-} PolyDivisor 245 3 where pdMod = replaceConv @245
 instance {-# OVERLAPS #-} PolyDivisor 1027 4 where pdMod = replaceConv @1027
 instance {-# OVERLAPS #-} PolyDivisor 349 7 where pdMod = replaceConv @349
+instance {-# OVERLAPS #-} PolyDivisor 2189 7 where pdMod = replaceConv @2189
 instance {-# OVERLAPS #-} PolyDivisor 1048591 16 where pdMod = replaceConv @1048591
 instance {-# OVERLAPS #-} PolyDivisor 3404825469 23 where pdMod = replaceConv @3404825469
+instance {-# OVERLAPS #-} PolyDivisor 194754273921 41 where pdMod = replaceConv @194754273921
 instance {-# OVERLAPS #-} PolyDivisor 34359738495 128 where pdMod = replaceConv @34359738495
 instance {-# OVERLAPS #-} PolyDivisor 2910383045673370361331249 3125 where pdMod = replaceConv @2910383045673370361331249
 
@@ -629,28 +642,18 @@ instance PrimePoly 2968730 1723
 
 instance (PolyDivisor p n) => Finite (FinPoly p (Z n)) where
     allElems = allFinPolys
-
-invFinPolyFermat ::
-       forall p n. (PolyDivisor p n)
-    => FinPoly p (Z n)
-    -> FinPoly p (Z n)
-invFinPolyFermat f =
-    let b = fromIntegral (natValI @n) :: Integer
-        s = deg (reflectCoeffPoly @p @n) :: Integer
-        phi = (b ^ s) - 1 -- http://www.dtic.mil/dtic/tr/fulltext/u2/a218148.pdf
-        res = f <^> (phi - 1) -- because f^φ = 1
-    in if res <*> f /= f1 then error "invFinPolyFermat failed" else res
-
--- Technically we can call invFinPolyFermat with just a PolyDivisor
--- constraint, but the algorithm will fail, so we require p to be prime.
-instance (PrimePoly p n) => Field (FinPoly p (Z n)) where
-    finv = invFinPolyFermat
-
-instance (PrimePoly p n) => FField (FinPoly p (Z n)) where
-    getFieldSize _ =
+    getOrder =
         let b = fromIntegral (natValI @n) :: Integer
             s = deg (reflectCoeffPoly @p @n) :: Integer
         in (b ^ s)
+
+-- Technically we can call invFinPolyFermat with just a PolyDivisor
+-- constraint, but the algorithm will fail (fermat's inv works only
+-- for irreducable elems), so we require p to be prime.
+instance (PrimePoly p n) => Field (FinPoly p (Z n)) where
+    finv = fermatInverse
+
+instance (PrimePoly p n) => FField (FinPoly p (Z n)) where
 
 irreducablePoly :: forall n. (PrimeNat n) => Integer -> Poly (Z n) -> Bool
 irreducablePoly d (stripZ -> a) =
@@ -658,6 +661,24 @@ irreducablePoly d (stripZ -> a) =
         l = representBack n $ 1 : replicate (fromIntegral d) 0
         ps = drop (fromIntegral n) $ (map (stripZ . Poly . map (toZ @n) . represent n) [0..(l-1)])
     in all (\x -> a `eMod` x /= f0) ps
+
+invPolyEuclidian ::
+       forall p n. (PrimeNat n, PolyDivisor p n)
+    => FinPolyZ p n
+    -> Maybe (FinPolyZ p n)
+invPolyEuclidian x = do
+    -- Polynomial GCD is not unique.
+    -- https://en.wikipedia.org/wiki/Polynomial_greatest_common_divisor
+    let (g,u,_) = extendedEucl (unFinPoly x) (getCoeffPoly @p)
+    guard (deg g == (0 :: Integer))
+    let Poly [g'] = g
+    let res = mkFinPoly (map (<*> finv g') u)
+    when (res <*> x /= f1) $ error "invPolyEuclidian is broken"
+    pure res
+
+----------------------------------------------------------------------------
+-- TODO Move to test modules
+----------------------------------------------------------------------------
 
 _testFinPolys :: IO ()
 _testFinPolys = do
@@ -672,9 +693,6 @@ _testFinPolys = do
     print $ z <*> y
 
 
-----------------------------------------------------------------------------
--- TODO Move to test modules
-----------------------------------------------------------------------------
 
 _testGenerators :: IO ()
 _testGenerators = do
@@ -688,7 +706,7 @@ _testGenerators = do
     print $ take 20 $ iterate (<*> g) g
     print (allFinPolys :: [FinPoly 19 (Z 2)])
     print $ getGen @(FinPoly 19 (Z 2))
-    print $ getFieldSize (Proxy @(FinPoly 19 (Z 2)))
+    print $ getOrder @(FinPoly 19 (Z 2))
     print $ allFinPolys @75 @2
 
 _testPrimality :: IO ()

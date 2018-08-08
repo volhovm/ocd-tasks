@@ -214,7 +214,7 @@ ecRhoGo p q k =
 
 {-
     m :: Z i
-    m = toZ $ getFieldSize (Proxy @(Z i))
+    m = toZ $ getOrder @(Z i)
     inS1 (EC x _) = x < (m `div` 3)
     inS1 _        = False
     inS2 (EC x _) = x < ((m `div` 3) * 2)

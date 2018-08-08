@@ -9,24 +9,9 @@ module Module7v9 () where
 import Universum hiding ((<*>))
 
 import Data.Coerce (coerce)
-import Data.List ((!!))
 
 import Lib.Field
 import Lib.Vector
-
--- Convolution product
-cProd :: Ring f => Vect f -> Vect f -> Vect f
-cProd (Vect a) (Vect b)
-    | length a /= length b = error "cProd sizes"
-    | otherwise = Vect $ map ck l
-  where
-    n = length a
-    l = [0..n-1]
-    inRange x = x >= 0 && x < n
-    ck k =
-        foldr1 (<+>) $
-        map (\(i,j) -> a !! i <*> b !! j)
-            [(i,j) | i <- l, j <- l, inRange i, inRange j, (i + j) `mod` n == k]
 
 ----------------------------------------------------------------------------
 -- 7.23
@@ -121,7 +106,7 @@ e726 = do
             let roots = findRoots (unFinPoly x)
             print roots
             putText $ bool "1 in root list, can't take inv"
-                           (show (invFinPolyFermat x))
+                           (show (fermatInverse x))
                            (f1 `notElem` roots)
     solve (mkFinPoly (Poly [1,0,0,8,3]) :: FinPolyZ 161061 11)
     solve (mkFinPoly (Poly [1,0,2,-3]) :: FinPolyZ 371305 13)

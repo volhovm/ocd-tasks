@@ -17,6 +17,7 @@ module Lib.Vector
        , vlen
        , vdim
        , angle
+       , cProd
 
        , Matrix (..)
        , mToVecs
@@ -103,6 +104,20 @@ vdim = fromIntegral . length . unVect
 
 angle :: (Ring f, Real f) => Vect f -> Vect f -> Double
 angle x y = acos $ realToFrac (dot x y) / (vlen x * vlen y)
+
+-- Convolution product
+cProd :: Ring f => Vect f -> Vect f -> Vect f
+cProd (Vect a) (Vect b)
+    | length a /= length b = error "cProd sizes"
+    | otherwise = Vect $ map ck l
+  where
+    n = length a
+    l = [0..n-1]
+    inRange x = x >= 0 && x < n
+    ck k =
+        foldr1 (<+>) $
+        map (\(i,j) -> a !! i <*> b !! j)
+            [(i,j) | i <- l, j <- l, inRange i, inRange j, (i + j) `mod` n == k]
 
 ----------------------------------------------------------------------------
 -- Matrices
