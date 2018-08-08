@@ -94,3 +94,49 @@ ntruTest = do
 
     print $ ntruDecrypt params sk e
     print $ ntruDecrypt params sk e == m
+
+----------------------------------------------------------------------------
+-- 7.29 Basic NTRU decryption
+----------------------------------------------------------------------------
+
+e729 :: IO ()
+e729 = do
+    let hole = error "hole"
+    let params = NtruParams 7 3 37 hole
+    let f = Vect [-1,1,0,-1,1,1,0]
+    let _F3 = Vect [1,1,-1,0,1,1,1]
+    let sk = NtruSk f hole _F3 hole
+    let e = Vect [2,0,8,-16,-9,-18,-3]
+    print $ ntruDecrypt params sk (NtruMsg e)
+
+{-
+λ> e729
+Vect {unVect = [0,1,0,0,-1,0,1]}
+-}
+
+----------------------------------------------------------------------------
+-- 7.30 Encryption/decryption
+----------------------------------------------------------------------------
+
+e730 :: IO ()
+e730 = do
+    let hole = error "hole"
+    let params = NtruParams 7 3 29 hole
+    let h = Vect [3,14,-4,13,-6,2,7]
+    let pk = NtruPk h
+    let m = Vect [1,1,-1,-1,0,0,-1]
+    let r = Vect [-1,0,1,0,0,-1,1]
+    let e = ntruEncrypt params pk m r
+    print e
+
+    let sk = NtruSk (Vect [-1,1,-1,0,1,0,1]) hole (Vect [1,1,1,0,1,1,-1]) hole
+    let m' = ntruDecrypt params sk e
+    print m'
+    print $ m' == m
+
+{-
+λ> e730
+NtruMsg (Vect {unVect = [-6,-13,-10,7,-9,-13,14]})
+Vect {unVect = [1,1,-1,-1,0,0,-1]}
+True
+-}
