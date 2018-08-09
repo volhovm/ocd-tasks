@@ -182,8 +182,10 @@ Hence, if we analyse components of e2-e1 = m2-m1 and see either -2 or 2,
 we're sure that the difference was exactly (-1) - (1) = -2 or (1) - (-1) = 2.
 3^2 = 9, leading to the 2/9 ratio.
 
-(b) 3 coefficients (x^2, x^4, x^5) have a difference of two. N = 8 - 3 learned
-symbols leaves us with 5^3 possibilities.
+(b) 3 coefficients (x^2, x^4, x^5) have a difference of two. N = 8 - 3
+learned symbols leaves us with 3^5 possibilities (less in fact,
+because in this particular case having -1 in difference leaves us two
+possibilities, so 2^2*3^3).
 
 (c) If we know r, then m = e - phr. e2-e1 = ph(r2-r1). Multiplied by the
 inverse of p modulo q we get h(r2-r1). If h is invertible, then we get
