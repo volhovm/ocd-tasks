@@ -192,3 +192,25 @@ of h' are in {-2hi, -hi, 0, hi, 2hi}, so given hi' we can deduce the
 (r2-r1)_i anyway.
 
 -}
+
+----------------------------------------------------------------------------
+-- 7.35
+----------------------------------------------------------------------------
+
+{-
+
+(a) a = fe = f(hr + m) = fhr + fm = fFgr + fm = gr + fm (mod q)
+    a = gr + fm = m (mod p)    (since g = 0 mod p and f = 1 mod p)
+
+(b) Let's check the value of e:
+
+    e = gr + fm = p g0 r + p f0 m + m
+
+    The maximum coefficients are:
+    p g0 r ~ p * 2d = 2pd
+    p f0 m ~ p * 2d = 2pd  (m is ternary)
+    m      ~ 1
+
+    Which gives us q/2 > 4pd + 1, thus q > 8pd + 2
+
+-}
