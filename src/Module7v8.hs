@@ -2,7 +2,7 @@
 
 -- | GGH PKC
 
-module Module7v8 () where
+module Module7v8 (genU) where
 
 import Universum
 
@@ -13,7 +13,6 @@ import System.Random (randomRIO)
 import Lib.Lattice
 import Lib.Misc (suchThat)
 import Lib.Vector
-import Module7v6 (babaiSolve)
 
 ----------------------------------------------------------------------------
 -- Common utilites

@@ -177,7 +177,7 @@ matrix can be called simpler.
 
 {-
 
-(a) Since m's is center-lifted and p = 3, its coefficients range in {-1,0,1}.
+(a) Since m's is center-lifted and p = 3, its coefficients range in { -1,0,1}.
 Hence, if we analyse components of e2-e1 = m2-m1 and see either -2 or 2,
 we're sure that the difference was exactly (-1) - (1) = -2 or (1) - (-1) = 2.
 3^2 = 9, leading to the 2/9 ratio.
@@ -190,7 +190,7 @@ possibilities, so 2^2*3^3).
 (c) If we know r, then m = e - phr. e2-e1 = ph(r2-r1). Multiplied by the
 inverse of p modulo q we get h(r2-r1). If h is invertible, then we get
 r2-r1 directly. Otherwise, we compare h' = h(r2-r1) with h. The coefficients
-of h' are in {-2hi, -hi, 0, hi, 2hi}, so given hi' we can deduce the
+of h' are in { -2hi, -hi, 0, hi, 2hi}, so given hi' we can deduce the
 (r2-r1)_i anyway.
 
 -}

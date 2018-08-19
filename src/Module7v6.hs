@@ -2,7 +2,7 @@
 
 -- | Babai's CVP algorithm.
 
-module Module7v6 (babaiSolve) where
+module Module7v6 () where
 
 import Universum
 
@@ -13,22 +13,6 @@ import Lib.Vector
 ----------------------------------------------------------------------------
 -- 7.17 Babai's algorithm
 ----------------------------------------------------------------------------
-
-babaiSolve :: [Vect Integer] -> Vect Integer -> (Vect Integer, [Integer])
-babaiSolve base w = (sol,ks)
-  where
-    sol :: Vect Integer
-    sol = foldl1 vplus $ map (uncurry vtimes) $ ks `zip` base
-
-    -- coefficients
-    ks :: [Integer]
-    ks =
-        map round $
-        unVect $
-        gaussSolveSystem (mtranspose $ Matrix $ map (unVect . conv) base) (conv w)
-      where
-        conv :: Vect Integer -> Vect Rational
-        conv = _Wrapped %~ map fromInteger
 
 e717 :: IO ()
 e717 = do
