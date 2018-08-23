@@ -109,8 +109,9 @@ e741 = do
     let w3 = [2762180674,-3173333120,-2485675809]
     let base = map Vect [w1,w2,w3]
     -- "good" base
-    let base' = undefined :: [Vect Integer] -- stupidReduction 0.1 20 base
+    let base' = lllReduction base :: [Vect Integer] -- stupidReduction 0.1 20 base
     print base'
+    print $ hadamardRatio base
     print $ hadamardRatio base'
     let sk = GghSigSk base' base
     print sk
@@ -119,6 +120,17 @@ e741 = do
     let (sol,_) = babaiSolve base' doc
     let diff = vlen $ sol `vminus` doc
     print diff
+
+{-
+The distance is 62 < 100.
+
+λ> e741
+[Vect {unVect = [118,15,26]},Vect {unVect = [-9,-147,-136]},Vect {unVect = [-45,154,-67]}]
+4.052244528409397e-8
+0.9385291371768608
+GghSigSk {gssGoodBasis = [Vect {unVect = [118,15,26]},Vect {unVect = [-9,-147,-136]},Vect {unVect = [-45,154,-67]}], gssBadBasis = [Vect {unVect = [-1612927239,1853012542,1451467045]},Vect {unVect = [-2137446623,2455606985,1923480029]},Vect {unVect = [2762180674,-3173333120,-2485675809]}]}
+61.59545437773797
+-}
 
 ----------------------------------------------------------------------------
 -- 7.42 NTRUMLS
@@ -158,5 +170,14 @@ e741 = do
                 = q/2 + p^2/2
                 ≤ q/2 + Np^2/4             (N ≥ 2)
                 = B
+
+(d) This is somewhat confusing. The probability of success is
+    obviously P = [(q-2B)/(q+2B)]^(2N).
+
+    And if we assume that B → 0 (???), then it's exactly
+
+    (1 - 4B/q)^(2N) = e^(-8NB/q) = e^(-8/k)
+
+    But I have no understanding why would we assume that.
 
 -}

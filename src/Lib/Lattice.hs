@@ -12,16 +12,19 @@ module Lib.Lattice
     , latticeDet
     , hadamardRatio
     , babaiSolve
+    , gramSchmidt
+    , lllReduction
     ) where
 
 import Universum
 
-import Control.Lens (_Wrapped)
+import Control.Lens (ix, _Wrapped)
+import Data.List ((!!))
 import qualified Data.List as L
 
 import Lib.Field (Field, Ring (..), fabs)
-import Lib.Vector (Matrix (..), Vect (..), determinant, gaussSolveSystem, mFromVecs, mmulm,
-                   mtranspose, scal, vdim, vlen, vplus, vtimes)
+import Lib.Vector (Matrix (..), Vect (..), determinant, dot, gaussSolveSystem, mFromVecs, mmulm,
+                   mtranspose, scal, vdim, vlen, vminus, vplus, vtimes)
 
 -- | Converts any Integer-based functor to rational (vector, matrix).
 lToRat :: Functor f => f Integer -> f Rational
@@ -96,3 +99,64 @@ babaiSolve base w = (sol,ks)
       where
         conv :: Vect Integer -> Vect Rational
         conv = _Wrapped %~ map fromInteger
+
+
+gramSchmidtRaw :: [Vect Double] -> ([Vect Double], Int -> Int -> Double)
+gramSchmidtRaw [] = ([], \_ _ -> error "gramSchmidtRaw empty")
+gramSchmidtRaw vecs = (vecs', μ)
+  where
+    μ :: Int -> Int -> Double
+    μ i j =
+        let vi = fromMaybe (error $ "mu: can't get vi: " <> show (i,j)) $ vecs ^? ix i
+            vj' = fromMaybe (error $ "mu: can't get vj: " <> show (i,j)) $ vecs' ^? ix j
+        in (vi `dot` vj') / (vlen vj' ^ (2 :: Int))
+    createVec' i =
+        vecs !! i `vminus`
+        (foldr1 vplus $ map (\j -> μ i j `scal` (vecs' !! j)) [0..i-1])
+    vecs' = L.head vecs : map createVec' [1..(length vecs-1)]
+
+gramSchmidt :: [Vect Double] -> [Vect Double]
+gramSchmidt = fst . gramSchmidtRaw
+
+lllReduction :: [Vect Integer] -> [Vect Integer]
+lllReduction base0 | length base0 > 2 = go base0 1
+                   | otherwise = error "lll: dim must be >= 3"
+  where
+    go base k
+        | k >= length base0 = base
+        | otherwise = do
+          let vk0 = base !! k
+          let toDouble = map (fmap fromInteger)
+          let (_,μ) = gramSchmidtRaw (toDouble $ take (k+1) base)
+          let vkmod =
+                  vk0 `vminus`
+                  (foldr1 vplus $
+                   map (\j -> round (μ k j) `scal` (base !! j)) [0..k-1])
+          let base' = base & ix k .~ vkmod
+          let (vecs',μ') = gramSchmidtRaw (toDouble $ take (k+1) base')
+          let [vkpred,vk] = drop (k-1) vecs'
+          let lovaszHolds =
+                  let sqr x = x * x
+                  in sqr (vlen vk) >=
+                     (3/4 - sqr (μ' k (k-1))) * sqr (vlen vkpred)
+
+          if lovaszHolds
+          then go base' (k+1)
+          else let swapped = base' & ix k .~ (base' !! (k-1))
+                                   & ix (k-1) .~ (base' !! k)
+               in go swapped (max (k-1) 1)
+
+_testLLL :: IO ()
+_testLLL = do
+    let vecs = [ [19, 2, 32, 46, 3, 33]
+               , [15, 42, 11, 0, 3, 24]
+               , [43, 15, 0, 24, 4, 16]
+               , [20, 44, 44, 0, 18, 15]
+               , [0, 48, 35, 16, 31, 31]
+               , [48, 33, 32, 9, 1, 29] ]
+    let base = map Vect vecs
+    -- "good" base
+    let base' = lllReduction base :: [Vect Integer] -- stupidReduction 0.1 20 base
+    print base'
+    print $ hadamardRatio base
+    print $ hadamardRatio base'

@@ -54,17 +54,6 @@ B in B'
 -- 7.6
 ----------------------------------------------------------------------------
 
-gramSchmidt :: [Vect Double] -> [Vect Double]
-gramSchmidt [] = []
-gramSchmidt (a:xs) = go [a] xs
-  where
-    go :: [Vect Double] -> [Vect Double] -> [Vect Double]
-    go acc [] = acc
-    go acc (vi:vixs)
-        | otherwise = let diff vj = (vi `dot` vj / (vlen vj ^ (2 :: Int))) `scal` vj
-                          vi' = vi `vminus` (foldr1 vplus $ map diff acc)
-                      in go (acc ++ [vi']) vixs
-
 e76 :: IO ()
 e76 = do
     let ε = 10 ^^ (-8 :: Integer)

@@ -6,7 +6,6 @@ module Module7v6 () where
 
 import Universum
 
-import Control.Lens (_Wrapped)
 import Lib.Lattice
 import Lib.Vector
 

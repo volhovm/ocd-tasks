@@ -1,5 +1,3 @@
-{-# OPTIONS_GHC -fno-warn-unused-top-binds #-}
-
 -- | NTRU as lattice cryptosystem.
 
 module Module7v11 () where
