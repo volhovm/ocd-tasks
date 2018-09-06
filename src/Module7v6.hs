@@ -19,7 +19,7 @@ e717 = do
     let v2 = Vect [312,105] :: Vect Integer
     let w = Vect [43127,11349] :: Vect Integer
 
-    let v = fst $ babaiSolve [v1,v2] w
+    let v = fst $ babaiCVP [v1,v2] (map fromIntegral w)
     putText $ "(a): " <> show v <> ", diff length " <> show (vlen $ v `vminus` w)
 
     let hm = hadamardRatio [v1,v2]
@@ -30,7 +30,7 @@ e717 = do
     let t = expressBaseInt [v1,v2] [v1',v2']
     putText $ "(c) Should be Just: " <> show t
 
-    let v' = fst $ babaiSolve [v1',v2'] w
+    let v' = fst $ babaiCVP [v1',v2'] (map fromIntegral w)
     putText $ "(d): " <> show v' <> ", diff length " <> show (vlen $ v' `vminus` w)
 
     let hm' = hadamardRatio [v1',v2']

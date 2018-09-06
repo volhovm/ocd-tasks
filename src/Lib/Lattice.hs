@@ -11,8 +11,10 @@ module Lib.Lattice
     , applyBase
     , latticeDet
     , hadamardRatio
-    , babaiSolve
+    , babaiCVP
     , gramSchmidt
+    , gaussReduction
+    , lllReductionRaw
     , lllReduction
     ) where
 
@@ -84,8 +86,8 @@ hadamardRatio vecs =
 
 -- | Babai's algorithm, returns solution vector and coefficients
 -- in the (good) base provided.
-babaiSolve :: [Vect Integer] -> Vect Integer -> (Vect Integer, [Integer])
-babaiSolve base w = (sol,ks)
+babaiCVP :: [Vect Integer] -> Vect Rational -> (Vect Integer, [Integer])
+babaiCVP base w = (sol,ks)
   where
     sol :: Vect Integer
     sol = foldl1 vplus $ map (uncurry vtimes) $ ks `zip` base
@@ -95,7 +97,7 @@ babaiSolve base w = (sol,ks)
     ks =
         map round $
         unVect $
-        gaussSolveSystem (mtranspose $ Matrix $ map (unVect . conv) base) (conv w)
+        gaussSolveSystem (mtranspose $ Matrix $ map (unVect . conv) base) w
       where
         conv :: Vect Integer -> Vect Rational
         conv = _Wrapped %~ map fromInteger
@@ -118,12 +120,25 @@ gramSchmidtRaw vecs = (vecs', μ)
 gramSchmidt :: [Vect Double] -> [Vect Double]
 gramSchmidt = fst . gramSchmidtRaw
 
-lllReduction :: [Vect Integer] -> [Vect Integer]
-lllReduction base0 | length base0 > 2 = go base0 1
-                   | otherwise = error "lll: dim must be >= 3"
+gaussReduction :: Vect Integer -> Vect Integer -> (Integer, [Vect Integer])
+gaussReduction = go 0
   where
-    go base k
-        | k >= length base0 = base
+    go i v1 v2
+        | vlen v2 < vlen v1 = go i v2 v1
+        | otherwise =
+          let m = round $ (fromIntegral (dot v1 v2)) / ((vlen v1) ** 2)
+          in if m == 0
+             then (i, [v1,v2])
+             else go (i+1) v1 (v2 `vminus` (m `scal` v1))
+
+lllReductionRaw :: Double -> [Vect Integer] -> (Integer, [Vect Integer])
+lllReductionRaw lovashK base0
+    | length base0 > 2 = go 0 base0 1
+    | otherwise = error "lll: dim must be >= 3"
+  where
+    -- computes number of swaps i
+    go i base k
+        | k >= length base0 = (i, base)
         | otherwise = do
           let vk0 = base !! k
           let toDouble = map (fmap fromInteger)
@@ -138,13 +153,16 @@ lllReduction base0 | length base0 > 2 = go base0 1
           let lovaszHolds =
                   let sqr x = x * x
                   in sqr (vlen vk) >=
-                     (3/4 - sqr (μ' k (k-1))) * sqr (vlen vkpred)
+                     (lovashK - sqr (μ' k (k-1))) * sqr (vlen vkpred)
 
           if lovaszHolds
-          then go base' (k+1)
+          then go i base' (k+1)
           else let swapped = base' & ix k .~ (base' !! (k-1))
                                    & ix (k-1) .~ (base' !! k)
-               in go swapped (max (k-1) 1)
+               in go (i+1) swapped (max (k-1) 1)
+
+lllReduction :: [Vect Integer] -> (Integer, [Vect Integer])
+lllReduction = lllReductionRaw (3/4)
 
 _testLLL :: IO ()
 _testLLL = do
@@ -156,7 +174,7 @@ _testLLL = do
                , [48, 33, 32, 9, 1, 29] ]
     let base = map Vect vecs
     -- "good" base
-    let base' = lllReduction base :: [Vect Integer] -- stupidReduction 0.1 20 base
+    let base' = snd $ lllReduction base :: [Vect Integer] -- stupidReduction 0.1 20 base
     print base'
     print $ hadamardRatio base
     print $ hadamardRatio base'

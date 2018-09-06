@@ -30,7 +30,7 @@ newtype GghSig = GghSig (Vect Integer) deriving (Show)
 
 gghSign :: GghSigSk -> GghDoc -> GghSig
 gghSign GghSigSk{..} (GghDoc doc) =
-    let (sol,_ks) = babaiSolve gssGoodBasis doc
+    let (sol,_ks) = babaiCVP gssGoodBasis (map fromIntegral doc)
     in GghSig $ fromMaybe (error "gghSign failed") $ expressInt gssBadBasis sol
 
 gghVerify :: GghSigPk -> Integer -> GghDoc -> GghSig -> Bool
@@ -109,7 +109,7 @@ e741 = do
     let w3 = [2762180674,-3173333120,-2485675809]
     let base = map Vect [w1,w2,w3]
     -- "good" base
-    let base' = lllReduction base :: [Vect Integer] -- stupidReduction 0.1 20 base
+    let base' = snd $ lllReduction base :: [Vect Integer] -- stupidReduction 0.1 20 base
     print base'
     print $ hadamardRatio base
     print $ hadamardRatio base'
@@ -117,7 +117,7 @@ e741 = do
     print sk
 
     let doc = Vect [87398273893,763829184,118237397273]
-    let (sol,_) = babaiSolve base' doc
+    let (sol,_) = babaiCVP base' (map fromIntegral doc)
     let diff = vlen $ sol `vminus` doc
     print diff
 

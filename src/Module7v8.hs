@@ -93,7 +93,7 @@ encryptRaw GghPk{..} e r =
 -- Returns the result and perturbation vector.
 decrypt :: GghSk -> Vect Integer -> ([Integer], Vect Integer)
 decrypt GghSk{..} e =
-    let (closest,_ks) = babaiSolve gsGoodBase e
+    let (closest,_ks) = babaiCVP gsGoodBase (fmap fromIntegral e)
 
         msg = lFromRat $ express (map lToRat gsBadBase) (lToRat closest)
 

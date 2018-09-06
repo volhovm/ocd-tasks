@@ -40,7 +40,7 @@ module Lib.Vector
        , gaussSolveSystem
        ) where
 
-
+import qualified Prelude
 import Universum hiding (head, (<*>))
 
 import Control.Lens (each, ix, makeWrapped, (%=), (.=), _Wrapped)
@@ -60,8 +60,11 @@ information about vector size to the type (because we should know how many
 elements to generate in f0). Instead, I provide a set of ad-hoc methods.
 -}
 
-data Vect f = Vect { unVect ::  [f] } deriving (Eq,Ord,Show,Foldable)
+data Vect f = Vect { unVect ::  [f] } deriving (Eq,Ord,Foldable)
 $(makeWrapped ''Vect)
+
+instance Show f => Show (Vect f) where
+    show (Vect x) = "Vect " <> show x
 
 instance IsList (Vect f) where
     type Item (Vect f) = f
