@@ -95,9 +95,9 @@ decrypt :: GghSk -> Vect Integer -> ([Integer], Vect Integer)
 decrypt GghSk{..} e =
     let (closest,_ks) = babaiCVP gsGoodBase (fmap fromIntegral e)
 
-        msg = lFromRat $ express (map lToRat gsBadBase) (lToRat closest)
+        msg = lFromRat $ express (map lFromInt gsBadBase) (lFromInt closest)
 
-        msg' = lFromRat (lToRat closest `vmulm` minverse (lToRat $ mFromVecs gsBadBase))
+        msg' = lFromRat (lFromInt closest `vmulm` minverse (lFromInt $ mFromVecs gsBadBase))
 
     in assert "eq" (msg == msg') $ (unVect msg, e `vminus` closest)
   where

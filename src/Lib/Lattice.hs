@@ -2,7 +2,7 @@
 
 module Lib.Lattice
     (
-      lToRat
+      lFromInt
     , lFromRat
     , express
     , expressInt
@@ -11,6 +11,7 @@ module Lib.Lattice
     , applyBase
     , latticeDet
     , hadamardRatio
+    , gaussianShortest
     , babaiCVP
     , gramSchmidt
     , gaussReduction
@@ -29,8 +30,8 @@ import Lib.Vector (Matrix (..), Vect (..), determinant, dot, gaussSolveSystem, m
                    mtranspose, scal, vdim, vlen, vminus, vplus, vtimes)
 
 -- | Converts any Integer-based functor to rational (vector, matrix).
-lToRat :: Functor f => f Integer -> f Rational
-lToRat = fmap fromInteger
+lFromInt :: (Functor f, Num n) => f Integer -> f n
+lFromInt = fmap fromInteger
 
 -- | Converts rationals to integers, fails if there's something
 -- non-integer inside.
@@ -40,7 +41,7 @@ lFromRat = fmap (\n -> if denominator n /= 1
                        else numerator n)
 
 -- Alternatively, you could do it using adjunct matrix:
---   lFromRat (lToRat x `vmulm` minverse (lToRat $ mFromVecs base))
+--   lFromRat (lFromInt x `vmulm` minverse (lFromInt $ mFromVecs base))
 -- | Express vector in terms of base.
 express :: Field f => [Vect f] -> Vect f -> Vect f
 express base x = gaussSolveSystem (mtranspose $ mFromVecs base) x
@@ -48,7 +49,7 @@ express base x = gaussSolveSystem (mtranspose $ mFromVecs base) x
 -- | 'express' specified for integers.
 expressInt :: [Vect Integer] -> Vect Integer -> Maybe (Vect Integer)
 expressInt base x = do
-    let res = express (map lToRat base) (lToRat x)
+    let res = express (map lFromInt base) (lFromInt x)
     guard $ all (\n -> denominator n == 1) res
     pure $ lFromRat res
 
@@ -67,7 +68,7 @@ expressBaseInt base base' = do
     pure res
   where
     t :: [Vect Rational]
-    t = expressBase (map lToRat base) (map lToRat base')
+    t = expressBase (map lFromInt base) (map lFromInt base')
     detT = determinant $ mFromVecs t
 
 -- | Given a base {bi} and vector k, compute (Sum{i} bi*ki).
@@ -75,14 +76,24 @@ applyBase :: [Vect Integer] -> Vect Integer -> Vect Integer
 applyBase base coeffs =
     foldl1 vplus $ map (\(b,c) -> c `scal` b) $ base `zip` unVect coeffs
 
+-- | Lattice determinant.
 latticeDet :: (Ring a, Ord a) => [Vect a] -> a
 latticeDet t = fabs $ determinant $ Matrix $ map unVect t
 
+-- | Basis Hadamard ratio.
 hadamardRatio :: [Vect Integer] -> Double
 hadamardRatio vecs =
     (fromInteger (latticeDet vecs) / product (map vlen vecs)) ** (1/n)
   where
     n = fromIntegral $ vdim $ L.head vecs
+
+-- | Gaussian shortest vector heuristics.
+gaussianShortest :: [Vect Integer] -> Double
+gaussianShortest base =
+    sqrt (n / (2 * pi * e)) * (fromIntegral (latticeDet base)) ** (1/n)
+  where
+    e = exp 1
+    n = fromIntegral $ length base
 
 -- | Babai's algorithm, returns solution vector and coefficients
 -- in the (good) base provided.
