@@ -323,3 +323,31 @@ Babai: 51.0
 Babai closest plane: 33.91164991562634
 
 -}
+
+----------------------------------------------------------------------------
+-- 7.54
+----------------------------------------------------------------------------
+
+{-
+First, dl = det(L)^2 ≥ (α_l^2/l)^{l}, where α_l is a length of shortest
+vector in the sublattice formed by {l_i}_{i <= l} (Hermite's theorem)
+
+Thus, D ≥ ∏(α_l^2/l)^{l}. Each element α_L^2/l is a positive rational,
+so this D_min is positive.
+
+Dmin ≤ (3/4)^N Dinit
+
+N ≥ log(Dinit/Dmin)/log(3/4)
+
+N = O(log(Dinit/Dmin))
+
+Dinit ≤ B^{n^2+n}
+
+Dmin = ∏(α_l^2/l)^{l}
+     ≥ ∏(α^2/l)^{l}  (let α be the most minimum element one could get over sublattices)
+     ≥ ∏(α^2/n)^{l}
+     = (α^2/n)^{(n^2 + n)/2}
+
+So log(Dinit/Dmin) = (n^2+n)log(n*B^2/α^2), which proves reduction is
+still polynomial time.
+-}
