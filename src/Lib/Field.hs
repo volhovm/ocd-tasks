@@ -271,6 +271,7 @@ DefPrime(41)
 DefPrime(47)
 DefPrime(53)
 DefPrime(59)
+DefPrime(67)
 DefPrime(83)
 DefPrime(613)
 DefPrime(631)
@@ -564,6 +565,7 @@ replaceConv x = res
 
 instance {-# OVERLAPS #-} PolyDivisor 33 2 where pdMod = replaceConv @33
 instance {-# OVERLAPS #-} PolyDivisor 245 3 where pdMod = replaceConv @245
+instance {-# OVERLAPS #-} PolyDivisor 177149 3 where pdMod = replaceConv @177149
 instance {-# OVERLAPS #-} PolyDivisor 1027 4 where pdMod = replaceConv @1027
 instance {-# OVERLAPS #-} PolyDivisor 349 7 where pdMod = replaceConv @349
 instance {-# OVERLAPS #-} PolyDivisor 2189 7 where pdMod = replaceConv @2189
@@ -571,7 +573,9 @@ instance {-# OVERLAPS #-} PolyDivisor 1048591 16 where pdMod = replaceConv @1048
 instance {-# OVERLAPS #-} PolyDivisor 3404825469 23 where pdMod = replaceConv @3404825469
 instance {-# OVERLAPS #-} PolyDivisor 194754273921 41 where pdMod = replaceConv @194754273921
 instance {-# OVERLAPS #-} PolyDivisor 34359738495 128 where pdMod = replaceConv @34359738495
+instance {-# OVERLAPS #-} PolyDivisor 122130132904968017149 67 where pdMod = replaceConv @122130132904968017149
 instance {-# OVERLAPS #-} PolyDivisor 2910383045673370361331249 3125 where pdMod = replaceConv @2910383045673370361331249
+
 
 ----------------------------------------------------------------------------
 -- Polynomials quotieng rings/fields

@@ -69,6 +69,7 @@ library
                      , Module7v11
                      , Module7v12
                      , Module7v13
+                     , Module7v14
   build-depends:       base >=4.9 && <4.11
                      , bytestring >=0.10
                      , containers >= 0.5.7.1

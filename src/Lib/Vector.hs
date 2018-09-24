@@ -23,6 +23,8 @@ module Lib.Vector
        , mToVecs
        , mFromVecs
        , showMatrix
+       , mConcH
+       , mConcV
        , mNull
        , mId
        , msize
@@ -111,7 +113,7 @@ angle x y = acos $ realToFrac (dot x y) / (vlen x * vlen y)
 -- Convolution product
 cProd :: Ring f => Vect f -> Vect f -> Vect f
 cProd (Vect a) (Vect b)
-    | length a /= length b = error "cProd sizes"
+    | length a /= length b = error $ "cProd sizes: " <> show (length a, length b)
     | otherwise = Vect $ map ck l
   where
     n = length a
@@ -144,6 +146,14 @@ mToVecs = map Vect . unMatrix
 -- | Matrix is row-dominated.
 showMatrix :: (Show a) => Matrix a -> String
 showMatrix (Matrix m) = L.unlines $ map (intercalate " " . map show) m
+
+-- | Horisontal matrix concatenation.
+mConcH :: Matrix a -> Matrix a -> Matrix a
+mConcH (Matrix m) (Matrix h) = Matrix $ map (uncurry (++)) $ zip m h
+
+-- | Vertical matrix concatenation.
+mConcV :: Matrix a -> Matrix a -> Matrix a
+mConcV (Matrix m) (Matrix h) = Matrix $ m ++ h
 
 -- | Zero matrix.
 mNull :: Ring a => Int -> Matrix a

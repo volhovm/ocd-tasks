@@ -2,7 +2,7 @@
 
 -- | Congruential PKC.
 
-module Module7v1 () where
+module Module7v1 where
 
 import Universum
 

@@ -2,7 +2,7 @@
 
 -- | GGH PKC
 
-module Module7v8 (genU) where
+module Module7v8 where
 
 import Universum
 

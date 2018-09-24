@@ -2,7 +2,9 @@
 
 module Lib.Lattice
     (
-      lFromInt
+      polyToVect
+    , vectToPoly
+    , lFromInt
     , lFromRat
     , express
     , expressInt
@@ -13,10 +15,12 @@ module Lib.Lattice
     , hadamardRatio
     , gaussianShortest
     , babaiCVP
+    , babaiClosestPlane
     , gramSchmidt
     , gaussReduction
     , lllReductionRaw
     , lllReduction
+    , centerLift
     ) where
 
 import Universum
@@ -25,9 +29,16 @@ import Control.Lens (ix, _Wrapped)
 import Data.List ((!!))
 import qualified Data.List as L
 
-import Lib.Field (Field, Ring (..), fabs)
-import Lib.Vector (Matrix (..), Vect (..), determinant, dot, gaussSolveSystem, mFromVecs, mmulm,
-                   mtranspose, scal, vdim, vlen, vminus, vplus, vtimes)
+import Lib.Field
+import Lib.Vector
+
+-- | Convert poly (little end) to vect.
+polyToVect :: Poly a -> Vect a
+polyToVect = Vect . reverse . unPoly
+
+-- | Convert vect to poly.
+vectToPoly :: AGroup a => Vect a -> Poly a
+vectToPoly = stripZ . Poly . reverse . unVect
 
 -- | Converts any Integer-based functor to rational (vector, matrix).
 lFromInt :: (Functor f, Num n) => f Integer -> f n
@@ -113,6 +124,20 @@ babaiCVP base w = (sol,ks)
         conv :: Vect Integer -> Vect Rational
         conv = _Wrapped %~ map fromInteger
 
+-- | Babai closest plane algorithm.
+babaiClosestPlane :: [Vect Integer] -> Vect Integer -> Vect Integer
+babaiClosestPlane base t = t `vminus` endw
+  where
+    base' = gramSchmidt $ map lFromInt base
+    loop w (-1) = w
+    loop w i =
+        let vi = base L.!! i
+            vi' = base' L.!! i
+            k :: Integer
+            k = round $ (lFromInt w `dot` vi') / (vlen vi' ^ (2 :: Int))
+        in loop (w `vminus` (k `scal` vi)) (i-1)
+    endw :: Vect Integer
+    endw = loop t (fromIntegral (vdim t) - 1)
 
 gramSchmidtRaw :: [Vect Double] -> ([Vect Double], Int -> Int -> Double)
 gramSchmidtRaw [] = ([], \_ _ -> error "gramSchmidtRaw empty")
@@ -131,6 +156,8 @@ gramSchmidtRaw vecs = (vecs', μ)
 gramSchmidt :: [Vect Double] -> [Vect Double]
 gramSchmidt = fst . gramSchmidtRaw
 
+-- | Performs gaussian basis reduction in dim 2, also the smallest
+-- vector is a solution to SVP.
 gaussReduction :: Vect Integer -> Vect Integer -> (Integer, [Vect Integer])
 gaussReduction = go 0
   where
@@ -189,3 +216,9 @@ _testLLL = do
     print base'
     print $ hadamardRatio base
     print $ hadamardRatio base'
+
+-- | Center lifts the vector of (Z n) to the vector of integers.
+centerLift :: forall q. KnownNat q => Vect (Z q) -> Vect Integer
+centerLift x =
+    let q' = natValI @q
+    in map (\e -> if e > q' `div` 2 then e-q' else e) $ map unZ x

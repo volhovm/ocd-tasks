@@ -2,13 +2,14 @@
 
 -- | NTRU PKC.
 
-module Module7v10 () where
+module Module7v10 where
 
 import Universum hiding ((<*>))
 
 import Data.Reflection (reifyNat)
 
 import Lib.Field
+import Lib.Lattice
 import Lib.Vector
 
 data NtruParams = NtruParams
@@ -30,11 +31,6 @@ data NtruPk = NtruPk
     } deriving (Show)
 
 data NtruMsg = NtruMsg (Vect Integer) deriving Show
-
-centerLift :: forall q. KnownNat q => Vect (Z q) -> Vect Integer
-centerLift x =
-    let q' = natValI @q
-    in map (\e -> if e > q' `div` 2 then e-q' else e) $ map unZ x
 
 toPublic :: NtruParams -> NtruSk -> NtruPk
 toPublic NtruParams{..} NtruSk{..} = NtruPk pk
@@ -59,20 +55,14 @@ ntruDecrypt NtruParams{..} NtruSk{..} (NtruMsg e) =
             centerLift $ map (toZ @p) nsFinvP `cProd` map (toZ @p) a
     in b
 
-polyToVect :: Poly a -> Vect a
-polyToVect = Vect . reverse . unPoly
-
-vectToPoly :: AGroup a => Vect a -> Poly a
-vectToPoly = stripZ . Poly . reverse . unVect
-
 ntruTest :: IO ()
 ntruTest = do
     let params = NtruParams 7 3 41 2
     let f = Vect [-1, 0, 1, 1, -1, 0, 1]
     let g = Vect [0, -1, -1, 0, 1, 0, 1]
 
-    let fq = FinPoly (Poly $ reverse $ unVect $ map (toZ @41) f) :: FinPolyZ 194754273921 41
-    let fp = FinPoly (Poly $ reverse $ unVect $ map (toZ @3) f) :: FinPolyZ 2189 3
+    let fq = FinPoly (vectToPoly $ map (toZ @41) f) :: FinPolyZ 194754273921 41
+    let fp = FinPoly (vectToPoly $ map (toZ @3) f) :: FinPolyZ 2189 3
 
     print fq
     print fp

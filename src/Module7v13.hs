@@ -6,8 +6,6 @@ module Module7v13 (e750) where
 
 import Universum hiding ((<*>))
 
-import qualified Data.List as L
-
 import Lib.Lattice
 import Lib.Vector
 
@@ -258,20 +256,6 @@ e750 = do
 ----------------------------------------------------------------------------
 -- 7.53
 ----------------------------------------------------------------------------
-
-babaiClosestPlane :: [Vect Integer] -> Vect Integer -> Vect Integer
-babaiClosestPlane base t = t `vminus` endw
-  where
-    base' = gramSchmidt $ map lFromInt base
-    loop w (-1) = w
-    loop w i =
-        let vi = base L.!! i
-            vi' = base' L.!! i
-            k :: Integer
-            k = round $ (lFromInt w `dot` vi') / (vlen vi' ^ (2 :: Int))
-        in loop (w `vminus` (k `scal` vi)) (i-1)
-    endw :: Vect Integer
-    endw = loop t (fromIntegral (vdim t) - 1)
 
 e753 :: IO ()
 e753 = do
