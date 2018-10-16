@@ -103,12 +103,12 @@ eulerPhiFast n =
     toRational n *
     product (map (\x -> 1 - 1 / (toRational x)) $ nub $ primeFactors n)
 
-order :: (Integral n) => n -> n -> Maybe n
-order p g | g >= p = order p $ g `mod` p
-order p g = find (\e -> exp p g e == 1) $ factors (p-1)
+order :: (Integral i) => i -> i -> Maybe i
+order n g | g >= n = order n $ g `mod` n
+order n g = find (\e -> exp n g e == 1) $ factors (n-1)
   where
-    divides m n = n `mod` m == 0
-    factors n = n : [x | x <- [1..n`div`2], x `divides` n]
+    divides m n' = n' `mod` m == 0
+    factors n' = [x | x <- [1..n'`div`2], x `divides` n'] ++ [n']
 
 -- | Find a collision between two lists.
 findCollision :: (Ord a) => [(a,n)] -> [(a,n)] -> Maybe (n,n)
