@@ -2,7 +2,7 @@
 
 -- | Primality checks.
 
-module Module3v4 (checkBPlot) where
+module Module3v4 (checkBPlot, isPrimeMR) where
 
 import Universum hiding (exp)
 
