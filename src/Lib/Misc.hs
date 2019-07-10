@@ -84,7 +84,7 @@ exp p g n
     | otherwise = power g n
   where
     pI = toInteger p
-    power _ 0 = 0
+    power _ 0 = 1
     power a 1 = a `mod` p
     power a b = do
         let (bdiv,bmod) = b `divMod` 2
@@ -105,10 +105,9 @@ eulerPhiFast n =
 
 order :: (Integral i) => i -> i -> Maybe i
 order n g | g >= n = order n $ g `mod` n
-order n g = find (\e -> exp n g e == 1) $ factors (n-1)
+order n g = find (\e -> exp n g e == 1) factors
   where
-    divides m n' = n' `mod` m == 0
-    factors n' = [x | x <- [1..n'`div`2], x `divides` n'] ++ [n']
+    factors = sort $ ordNub $ map (foldl1 (*)) $ allCombinations (primeFactors (n-1))
 
 -- | Find a collision between two lists.
 findCollision :: (Ord a) => [(a,n)] -> [(a,n)] -> Maybe (n,n)
