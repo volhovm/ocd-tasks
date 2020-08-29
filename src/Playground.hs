@@ -13,6 +13,7 @@ import Data.List (delete, last, (!!))
 import Data.Numbers.Primes (isPrime, primeFactors, primes)
 import Data.Reflection (reifyNat)
 import Module3v4 (isPrimeMR)
+import Module5v5 (pollardRho)
 import System.Random (randomRIO)
 
 import Lib hiding (crt)
@@ -275,6 +276,23 @@ convRound a b = if length a /= length b then error "mda" else
         foldr1 (+) $
         map (\(i,j) -> (a !! i) * (b !! j))
             [(i,j) | i <- l, j <- l, inRange i, inRange j, (i + j) `mod` n == k]
+
+evalCircularShift :: IO ()
+evalCircularShift = do
+    let n = 4
+    let params@DJParams{..} = genDJParams n 1024 20
+    let a = fft params [5,6,7,8]
+    let shft1 (x:xs) = xs ++ [x]
+    let shft n l = if n == 0 then l else shft (n-1) (shft1 l)
+
+    print $ fftinv params a
+    print $ fftinv params $ shft 1 a
+    print $ fftinv params $ shft 2 a
+    print $ fftinv params $ shft 3 a
+    print $ fftinv params $ shft 4 a
+
+
+    print $ fftinv params $ foldr1 simdadd [a, shft 1 a, shft 2 a, shft 3 a]
 
 fftTest1 :: IO ()
 fftTest1 = do
@@ -579,10 +597,16 @@ testCrt = do
 
     print base
     print baseprod
+    print $ crt base [2,3,4,5] * crt base [195,196,197,198]
+    print $ crtInv base $ crt base [2,3,4,5] * crt base [195,196,197,198]
+    print $ crtInv base $ (crt base [2,3,4,5] * crt base [195,196,197,198]) `mod` baseprod
+    print $ crtInv base $ (crt base [2,3,4,5] * crt base [195,196,197,198]) `mod` (2 * baseprod)
+    print $ crtInv base $ (crt base [2,3,4,5] * crt base [195,196,197,198]) `mod` u
     print $ crt base m1
     print $ crtInv base $ crt base m1
     print $ crtInv base $ crt base m0 + crt base m1
     print $ crtInv base $ crt base m1 * crt base m2
+    print $ crtInv base $ (crt base m1 * crt base m2) `mod` baseprod
     print $ crtInv base $ crt base m2 * crt base [0,0,1,1]
 
 
@@ -636,3 +660,119 @@ testCrt = do
 --    print $ simdmul l1 l2
 --    print $ crtInv base $ r1 * r2
 --    print $ crtInv base $ r1 * r2 * crt base (map (inverse 100) base)
+
+-- | Inverse for non-primes
+inverse' :: (Integral n, Show n) => n -> n -> n
+inverse' a n =
+    if gcd' /= 1 then error  $ "inverse: gcd is not 1: " <> show (a,n,gcd')
+                 else u `mod` n
+  where
+    (gcd',u,_) = exEucl a n
+
+
+crt'' :: [(Integer,Integer)] -> Integer
+crt'' [] = error "chinese called with empty list"
+crt'' xs | not (coprimes $ map snd xs) =
+             error $ "not relative primes: " <> show (map snd xs)
+crt'' l = chineseGo l [] 1
+  where
+    chineseGo [] _ c          = c
+    chineseGo ((a, m):xs) ms c =
+        traceShow (g',c') $
+        chineseGo xs (m:ms) c'
+      where
+        g' = crt (m:ms) (inverse' c m : map (\mi -> inverse' a mi) ms)
+        c' = if a == 0
+             then c * m * crt ms (map (\mi -> inverse' m mi) ms)
+             else c * a * g'
+
+crtWeird :: [Integer] -> [Integer] -> Integer
+crtWeird base vals = crt'' $ vals `zip` base
+
+testCrtWeird :: IO ()
+testCrtWeird = do
+    let m = 15
+    let n = 4
+    let base = take n $ filter (> m) primes
+    print base
+    print $ crtWeird base [1,2,4,5]
+    print $ crtInv base $ crtWeird base [1,2,4,5]
+
+testEqSolve :: IO ()
+testEqSolve = do
+
+    let a = 8
+    let c = 531511512
+    let solve y = let z = crt [17, 19, 23] $ map (inverse y) [17, 19, 23] in
+                  let y' = a * (inverse (c * z) 29) in
+                  if y == y' then y else solve y'
+
+    print $ solve 1
+    putText "mda"
+
+
+crt3 :: [Integer] -> [Integer] -> Integer
+crt3 base vals = sum $ map (\(p,a) -> a * b p * inverse (b p) p) $ zip base vals
+  where
+    b p = product base `div` p
+    --b p = (product base * product base) `div` (p*p)
+
+testCrt3 :: IO ()
+testCrt3 = do
+    let m = 15
+    let n = 4
+    q <- genPrime 80
+    let base = take n $ filter (> m) primes
+    print base
+    let m1 = [1,5,9,4]
+    print $ crt3 base m1
+    print $ crtInv base $ crt3 base m1
+    print $ crtInv base $ crt3 base m1 + crt3 base [5,5,5,5]
+    print $ crtInv base $ crt3 base m1 * crt3 base [5,5,5,5]
+    print $ crtInv base $ crt3 base m1 * crt3 base [0,0,1,0]
+
+    putText "-----"
+
+    let p i = base !! i
+    let b i = product base `div` p i
+    let binv i = inverse (b i) (p i)
+
+
+    let switch i j x = (x * inverse (b i * binv i) q * b j * binv j) `mod` q
+    let switch2 i j x = (x * inverse (p j * binv i) q * p i * binv j) `mod` q
+    let switch3 i j k x = (x * inverse ((b i * binv i) ^ k) q * b j * binv j) `mod` q
+    let cancel4 i k x = (x * inverse ((b i * binv i) ^ k) q) `mod` q
+
+    print $ crtInv base $ switch 2 1 $ crt3 base [0,0,1,0]
+    print $ crtInv base $ switch 2 1 $ crt3 base [0,0,1,0] + crt3 base [0,0,5,0]
+
+    print $ crtInv base $ switch 2 1 $ crt3 base [0,0,1,0] * crt3 base [0,0,1,0]
+    print $ crtInv base $ switch 2 1 $ crt3 base m1 * crt3 base [0,0,1,0]
+    print $ crtInv base $
+        switch2 2 1 $
+        cancel4 2 1 $
+        crt3 base m1 * (crt3 base [0,0,1,0] + product base * product base)
+    print $ crtInv base $ switch2 2 1 $
+        crt3 base m1 * (crt3 base [0,0,1,0] + product base * product base)
+
+    putText "*****"
+
+    print $ crtInv base $ switch2 2 1 $ crt3 base [0,0,1,0]
+    print $ crtInv base $ switch2 2 1 $ crt3 base [0,0,1,0] + crt3 base [0,0,5,0]
+
+    print $ crtInv base $ switch2 2 1 $ crt3 base m1 * crt3 base [0,0,1,0]
+    print $ crtInv base $ switch2 2 2 $ crt3 base m1 * crt3 base [0,0,1,0]
+    print $ crtInv base $ switch2 2 3 $ crt3 base m1 * crt3 base [0,0,1,0]
+
+    putText "*****"
+
+    print $ crtInv base $ switch3 2 1 1 $ crt3 base [0,0,1,0]
+    print $ crtInv base $ switch3 2 1 1 $ crt3 base [0,0,1,0] + crt3 base [0,0,5,0]
+
+    print $ crtInv base $ switch3 2 1 2 $ crt3 base [0,0,1,0] * crt3 base [0,0,1,0]
+    print $ crtInv base $ switch3 2 1 2 $ crt3 base m1 * crt3 base [0,0,1,0]
+    print $ crtInv base $ switch3 2 2 2 $ crt3 base m1 * crt3 base [0,0,1,0]
+    print $ crtInv base $ switch3 2 3 2 $ crt3 base m1 * crt3 base [0,0,1,0]
+
+foo :: Double -> Double
+foo n = (2 * n - 2 + sqrt ((2 - 2 * n) ^ 2 - 4 * (n-2)* (n-1) )) / (2 * (n-2))

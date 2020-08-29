@@ -20,7 +20,7 @@ packages:
     hackage: easyplot-1.0
 snapshots:
 - completed:
-    size: 567342
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/10/3.yaml
-    sha256: b3d22b89ec630597ad007088e98aa1c8d04844b6c0f23970b513a2862e0b8f0a
-  original: lts-10.3
+    size: 491372
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/15/2.yaml
+    sha256: a98d091d911606d0d8adccbeb811b81bbd8cc2d888f99ef9e273350e8e9692a8
+  original: lts-15.2
